@@ -1,0 +1,75 @@
+# Bench configuration for the 852 nm OIL characterisation.
+# Edit the serial numbers and sensor details to match your kit before the first run.
+
+[driver]
+# KLD101 serial number (printed on the K-Cube, starts with 98)
+serial = "98000000"
+# Folder containing Thorlabs.MotionControl.KCube.LaserDiode.dll (installed with Kinesis)
+kinesis_path = 'C:\Program Files\Thorlabs\Kinesis'
+# Expected polarity. Cathode grounded matches the Thorlabs Type 1 wiring used on this bench.
+polarity = "cathode_grounded"
+# Hardware ceiling of the KLD101 (from the Thorlabs API: set point 0-32767 = 0-230 mA)
+full_scale_mA = 230.0
+# Voltage reading scale (raw counts -> volts). The API documents the range as -10000..10000;
+# 1000 counts per volt is assumed. Check once against a multimeter and correct here.
+voltage_counts_per_V = 1000.0
+
+[power_meter]
+# Leave blank to auto-detect the first Thorlabs PM100-series meter on USB
+resource = ""
+# Maximum power the sensor head can take, in mW (S120C = 50 mW, S121C = 500 mW, S154C = 3 mW).
+# The sweep stops if a reading passes 90 % of this.
+sensor_max_mW = 50.0
+# Readings averaged per point
+average_count = 50
+
+[lasers.DBR852PN]
+role = "master"
+# Never sweep above this. Spec sheet operating current is 300 mA, but the KLD101 stops at 230 mA.
+max_current_mA = 230.0
+threshold_typ_mA = 50.0
+slope_typ_W_per_A = 0.09
+power_typ_mW_at_300mA = 24.0
+tuning_typ_nm_per_mA = 0.002
+tuning_typ_nm_per_C = 0.06
+tec_current_limit_A = 0.5
+
+[lasers.FPL852P]
+role = "slave"
+# The KLD101 cannot drive this laser properly (threshold 200-300 mA, runs to 900 mA).
+# Kept here so the scripts refuse to run it on the KLD101 by accident.
+max_current_mA = 0.0
+threshold_typ_mA = 250.0
+slope_typ_W_per_A = 0.51
+tec_current_limit_A = 1.5
+
+[awg]
+# Active Technologies AWG-5064 (T3AWG6K command set). LAN or USB VISA address.
+address = "TCPIP::192.168.0.10::INSTR"
+# Drive letter the AWG gives the USB stick when loading waveform files from it
+usb_drive = 'D:\'
+# Never exceed these output levels into 50 ohm without re-checking the bias-tee and laser limits
+max_high_V = 1.0
+max_low_V = -1.0
+
+[scope]
+# Tektronix 4 Series MSO. LAN or USB VISA address (leave blank to auto-detect a Tektronix scope)
+address = ""
+
+[injection]
+# Master tuning from stage 01 (update with your measured value)
+master_tuning_pm_per_mA = 2.0
+# Free-running slave (FP) mode spacing, nm, once measured on the OSA
+slave_mode_spacing_nm = 0.1
+
+[fibre]
+# 852 nm needs fibre that is single-mode at 852 nm (e.g. 780HP, PM780-HP). Standard telecom
+# SMF-28 is few-mode at 852 nm. Attenuation below is a typical 780HP-class value; check your spools.
+attenuation_dB_per_km = 3.5
+connector_loss_dB = 0.5
+
+[detector]
+# Silicon SPAD at 852 nm (typical values; replace with the real detector's datasheet numbers)
+efficiency = 0.5
+dark_count_Hz = 100.0
+dead_time_ns = 22.0
