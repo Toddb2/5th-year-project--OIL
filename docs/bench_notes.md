@@ -83,6 +83,11 @@ Pinouts used:
 - `li_sweep.py` stopped with "polarity is anode_grounded": the KLD101 status bits were read before the cube had reported them (all zero). The driver now waits for real status bits.
 - Stage 1 results: `01_characterisation/make_figures.py` (also run automatically at the end of stage 1 by `run_experiment.py`) writes PNG + PDF figures and a results table to `results/characterisation/`.
 - Swapped the S154C for an S130C (slider on 500 mW): no attenuator needed for the full 200 mA sweep.
+- KLD101 polarity flipped to anode grounded again after Kinesis was opened (its Startup settings). Set Cathode grounded on both the Current and Startup tabs and Save.
+- First sweep (`li_sweep.py --stop 80`) stopped at 10 mA: the KLD101 current readback stayed at 0.00 mA while its voltage rose 0.33 → 1.03 V (2–10 mA) and the power went from 0 to ~0.1 µW. Either the readback is dead in this Kinesis version or current isn't reaching the laser. Test in Kinesis: enable at 10 mA, then 60 mA, and compare Kinesis' current display with the PM100D (expect ~0.9 mW at 60 mA). The sweep now carries on when the readback is 0 but the voltage and status are normal, and stops instead on V > 2.6 V or no light above 75 mA.
+- **Kinesis test (29 Oct, 17:47): the laser works.** Kinesis showed 10.00 mA at 1.08 V; the PM100D read 0.125 µW at 10 mA and ~2.36 mW at 60 mA. So only the script's current readback fails, and the threshold looks lower than the 50 mA spec guess. The driver now also calls `LD_RequestStatus` before reading; if the readback still says 0, the sweep logs the set point.
+- Kinesis shows no photodiode current ("-.- µA"): either the DBR852PN has no monitor photodiode on pins 3/4 or those wires aren't connected. Not needed in constant-current mode.
+- TEC oscillating between ~23 and ~27 °C with the current pinned at ±490 mA: the loop gains (P 15, I 4, D 60) were too high for this mount. Lowered (P ~5, I ~1) on both the Current and Startup tabs and saved to the device; check it settles.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
 
 ## Plan from here

@@ -108,6 +108,8 @@ def main():
                      "status_bits": st.raw_bits, "note": a.note})
 
     now_mA, t0, stop_reason = 0.0, time.time(), "completed"
+    readback_seen = readback_warned = False
+    V_MAX = 2.6  # a DBR852PN runs at ~1.5-2.2 V; much more means reverse bias or a bad contact
     try:
         driver.set_constant_current()
         driver.set_current_mA(0.0)
@@ -124,7 +126,9 @@ def main():
             powers = [meter.power_W() * 1000 for _ in range(1 if manual else a.reads)]
             P = statistics.fmean(powers)
             Pstd = statistics.pstdev(powers) if len(powers) > 1 else 0.0
-            log.write({"set_mA": I, "current_mA": round(rd.current_mA, 3), "power_mW": P, "power_std_mW": Pstd,
+            # if the driver can't read its current back, log the set point (flagged in meta.json)
+            cur = rd.current_mA if (manual or readback_seen or rd.current_mA > 0.5 or I < 10) else I
+            log.write({"set_mA": I, "current_mA": round(cur, 3), "power_mW": P, "power_std_mW": Pstd,
                        "voltage_V": rd.voltage_V, "pd_mA": rd.pd_current_mA, "elapsed_s": round(time.time() - t0, 2)})
             v = f"{rd.voltage_V:.3f}" if rd.voltage_V is not None else "-"
             pd = f"{rd.pd_current_mA:.4f}" if rd.pd_current_mA is not None else "-"
@@ -133,9 +137,27 @@ def main():
             if getattr(meter, "last_raw_W", P / 1000) > 0.9 * limits.sensor_max_W:
                 stop_reason = "power near sensor limit (add attenuation to go higher)"
                 break
+            if not manual and rd.current_mA > 0.5:
+                readback_seen = True
             if not manual and I >= 10 and rd.current_mA < 0.8 * I:
-                stop_reason = (f"measured current {rd.current_mA:.1f} mA is well below the set point: "
-                               "open circuit, wrong polarity or driver at its voltage limit")
+                st_now = driver.status()
+                v_ok = rd.voltage_V is not None and 0.3 < rd.voltage_V < V_MAX
+                if readback_seen or st_now.open_circuit or not v_ok:
+                    stop_reason = (f"measured current {rd.current_mA:.1f} mA is well below the set point "
+                                   f"(V = {rd.voltage_V}, open-circuit bit {st_now.open_circuit}): open circuit, "
+                                   "wrong polarity or driver at its voltage limit")
+                    break
+                if not readback_warned:
+                    print("  ! The KLD101 reports 0 mA but the voltage and status look normal: treating its current "
+                          "readback as unavailable. Guarding with the voltage and the light output instead.")
+                    readback_warned = True
+            if not manual and rd.voltage_V is not None and rd.voltage_V > V_MAX:
+                stop_reason = f"forward voltage {rd.voltage_V:.2f} V is above {V_MAX} V: check polarity and wiring"
+                break
+            light_check_at = 1.5 * spec.threshold_typ_mA
+            if I >= light_check_at and P < 0.1 * spec.slope_typ_W_per_A * (I - spec.threshold_typ_mA):
+                stop_reason = (f"almost no light ({P:.4f} mW) at {I:g} mA, well above the ~{spec.threshold_typ_mA:g} mA "
+                               "threshold: no current reaching the laser, fibre not connected, or wrong polarity")
                 break
             if not manual and driver.status().current_limit_reached and I < limits.max_current_mA:
                 stop_reason = "driver reports its current limit was reached"
@@ -150,6 +172,10 @@ def main():
         driver.close()
         meter.close()
     print(f"\n{'Laser off.' if off else 'CHECK THE DRIVER IS OFF.'} Run ended: {stop_reason}\nData: {run}")
+    if readback_warned:
+        m = json.loads((run / "meta.json").read_text())
+        m["current_readback"] = "unavailable: current_mA column holds the set point"
+        (run / "meta.json").write_text(json.dumps(m, indent=2))
 
     df = load_li(run / "liv.csv")
     try:

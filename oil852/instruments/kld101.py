@@ -76,6 +76,7 @@ class KLD101:
             "LD_SetOpenLoopMode": ([c], ctypes.c_short), "LD_EnableOutput": ([c], ctypes.c_short),
             "LD_DisableOutput": ([c], ctypes.c_short), "LD_RequestReadings": ([c], ctypes.c_short),
             "LD_RequestStatusBits": ([c], ctypes.c_short), "LD_RequestMaxCurrent": ([c], ctypes.c_short),
+            "LD_RequestStatus": ([c], ctypes.c_short),
             "LD_RequestLaserPolarity": ([c], ctypes.c_short), "LD_RequestSettings": ([c], ctypes.c_short),
             "LD_SetLaserSetPoint": ([c, ctypes.c_uint16], ctypes.c_short),
             "LD_GetLaserSetPoint": ([c], ctypes.c_uint16),
@@ -201,8 +202,9 @@ class KLD101:
 
     def read(self) -> DriverReading:
         self._call("LD_RequestReadings")
+        self._call("LD_RequestStatus")  # header: "actual power, current and status"; Kinesis' own display uses it
         self._lib.LD_RequestStatusBits(self.serial)
-        time.sleep(0.05)
+        time.sleep(0.15)
         i_counts = self._call("LD_GetLaserDiodeCurrentReading")
         if i_counts is None:  # fall back to the set point if this Kinesis can't read the current back
             i_counts = self._call("LD_GetLaserSetPoint", default=0)
