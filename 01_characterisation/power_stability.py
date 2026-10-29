@@ -69,7 +69,7 @@ def main():
             I = a.current if manual else driver.read().current_mA
             log.write({"elapsed_s": round(time.time() - t0, 2), "power_mW": P, "current_mA": I})
             print(f"\r{(time.time() - t0) / 60:6.2f} min  {P:9.4f} mW", end="")
-            time.sleep(a.interval if a.mode != "sim" else 0)
+            time.sleep(a.interval if a.mode != "sim" else 0.005)
     except KeyboardInterrupt:
         reason = "stopped by user"
     finally:

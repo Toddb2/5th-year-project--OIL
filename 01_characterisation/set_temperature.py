@@ -1,0 +1,61 @@
+"""Read or set the laser temperature through the TTC001.
+
+  python 01_characterisation/set_temperature.py --read           # live reading (Ctrl+C to stop)
+  python 01_characterisation/set_temperature.py --to 25          # set, enable, wait until stable
+  python 01_characterisation/set_temperature.py --to 20 --mode manual
+  python 01_characterisation/set_temperature.py --off            # disable the TEC output
+
+Temperatures are converted to the thermistor's kOhm set point with r25_kohm and beta_K from
+config/bench.toml [tec]. Allowed range: [tec] min_C to max_C.
+If the temperature runs away from the target after enabling, the script disables the TEC:
+TEC+ and TEC- are swapped.
+"""
+
+from __future__ import annotations
+
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))  # repo root, for the oil852 package
+
+import argparse  # noqa: E402
+import time  # noqa: E402
+
+from oil852.config import load_config  # noqa: E402
+from oil852.instruments.tec import open_tec  # noqa: E402
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--to", type=float, help="target temperature in deg C")
+    g.add_argument("--read", action="store_true")
+    g.add_argument("--off", action="store_true")
+    p.add_argument("--mode", choices=["auto", "manual", "sim"], default="auto")
+    p.add_argument("--config", default=None)
+    a = p.parse_args()
+    cfg = load_config(a.config)
+    t = cfg.get("tec", {})
+    tec = open_tec(cfg, a.mode)
+    tec.connect()
+    try:
+        if a.off:
+            tec.disable()
+            print("TEC output disabled.")
+        elif a.read:
+            while True:
+                print(f"\r{tec.read_C():8.3f} C", end="", flush=True)
+                time.sleep(1)
+        else:
+            print(f"Going to {tec.describe(a.to)}")
+            T = tec.go_to(a.to, float(t.get("tolerance_C", 0.05)), float(t.get("hold_s", 30)),
+                          float(t.get("timeout_s", 600)))
+            print(f"Holding {T:.3f} C. The TEC stays on.")
+    except KeyboardInterrupt:
+        print()
+    finally:
+        tec.close()
+
+
+if __name__ == "__main__":
+    main()

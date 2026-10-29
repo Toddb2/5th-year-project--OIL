@@ -33,6 +33,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from oil852.config import DATA_ROOT  # noqa: E402
+from oil852.runio import log_run  # noqa: E402
 from oil852.patterns import (MAX_SAMPLES, bb84_steps, cow_slots, dps_steps, master_waveform,  # noqa: E402
                              random_bb84_symbols, save_awg_file, slave_waveform)
 
@@ -81,6 +82,7 @@ def main():
     y2 = master_waveform(master, sps, a.step_ns / a.slot_ns)
     out = DATA_ROOT / "qkd_patterns" / f"{a.protocol}_{datetime.now():%Y%m%d_%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
+    log_run(out)
     save_awg_file(out / "ch1_slave.txt", y1)
     peak2 = save_awg_file(out / "ch2_master.txt", y2) if np.any(y2) else 1.0
     if not np.any(y2):

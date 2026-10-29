@@ -21,6 +21,7 @@ from oil852.cli import ROOT  # noqa: F401
 from oil852.analysis import analyse_li, characteristic_temperature, load_li
 from oil852.config import DATA_ROOT
 from oil852.plotting import plot_temperature_series
+from oil852.runio import log_run
 
 
 def main():
@@ -36,6 +37,7 @@ def main():
     t0 = characteristic_temperature([c[0] for c in curves], [c[2].threshold_fit_mA for c in curves])
     out = Path(a.out) if a.out else DATA_ROOT / datetime.now().strftime("%Y-%m-%d") / f"temperature_series_{datetime.now():%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
+    log_run(out)
     plot_temperature_series(curves, t0, out / "temperature_series.png")
     summary = {"T0_K": t0, "runs": [{"run": str(r), "temperature_C": T, "threshold_mA": res.threshold_fit_mA,
                                      "slope_W_per_A": res.slope_W_per_A, "max_power_mW": res.max_power_mW}

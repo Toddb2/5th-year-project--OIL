@@ -14,7 +14,7 @@ This repository holds the code, bench documentation and data for my masters proj
 
 The project started with a monolithic OIL photonic integrated circuit on loan from the University of Glasgow, and a carrier PCB designed for it. When the loaned packages turned out to be damaged, the transmitter was rebuilt from discrete parts at 852 nm so every element can be driven and measured separately. The longer-term direction is fibre deployment, then an airborne platform, then the satellite context of the group's Hub Optical Ground Station and the SPOQC CubeSat programme. See [docs/project_history.md](docs/project_history.md).
 
-The work is split into four stages, each a folder of scripts that share the `oil852` package:
+The work is split into four stages, each a folder of scripts that share the `oil852` package. `run_experiment.py` runs all four in order on the bench, from the first L–I curve to the key rate:
 
 1. **Characterisation** — each laser alone: L–I–V, threshold against temperature, wavelength tuning, stability.
 2. **Injection locking** — VOA calibration, OSA spectra, where and how strongly the slave locks against injection ratio.
@@ -53,11 +53,14 @@ Full instrument list, connections and how data reaches the laptop: [docs/instrum
 │
 ├── README.md
 ├── requirements.txt
+├── run_experiment.py              ← runs the whole experiment, stage by stage, and writes a report
 ├── config/
-│   └── bench.toml                 ← serial numbers, addresses, per-laser current limits, fibre/detector numbers
+│   ├── bench.toml                 ← serial numbers, addresses, per-laser current limits, TEC/VOA, fibre/detector numbers
+│   └── campaign.toml              ← what run_experiment.py sweeps: temperatures, currents, VOA settings, biases, protocols
 │
 ├── oil852/                        ← shared package
-│   ├── instruments/               ← KLD101 (Kinesis DLL), PM100D, AWG-5064, Tek scope, simulated + manual stand-ins
+│   ├── instruments/               ← KLD101 + TTC001 (Kinesis DLLs), PM100D, AWG-5064, Tek scope, VOA, simulated + manual stand-ins
+│   ├── campaign.py, report.py     ← the experiment runner and its end-of-campaign report
 │   ├── analysis.py                ← threshold, slope, series resistance, T0, tuning, mode hops
 │   ├── spectrum.py                ← OSA traces: peaks, SMSR, mode spacing, locked or not
 │   ├── locking.py                 ← locking range, GHz <-> pm <-> mA conversions
@@ -72,6 +75,7 @@ Full instrument list, connections and how data reaches the laptop: [docs/instrum
 ├── 04_qkd/                        ← protocol patterns, time-tag QBER/visibility, key rate vs distance
 │
 ├── docs/
+│   ├── run_experiment.md          ← how to run the whole experiment, resume it and read the report
 │   ├── bench_settings.md          ← driver/TEC/meter settings, switch-on order, what to expect
 │   ├── instruments_and_data.md    ← every instrument, its connection and software
 │   ├── wiring.md                  ← butterfly pinout, driver and Arroyo adapters, RF and fibre paths
@@ -83,6 +87,17 @@ Full instrument list, connections and how data reaches the laptop: [docs/instrum
 ├── tests/                         ← pytest checks against simulated data
 └── data/                          ← one folder per measurement run
 ```
+
+---
+
+## Running the whole experiment
+
+```bash
+python run_experiment.py --mode sim     # rehearse every stage with simulated instruments
+python run_experiment.py                # the real bench
+```
+
+The runner works through `config/campaign.toml`. It sets the TTC001 to each temperature and waits for it to settle, runs the sweep, then moves on to the next value. In stage 2 it sets the VOA from its own calibration for each injection ratio. It stops and tells you whenever something needs doing by hand: moving a fibre, setting the slave driver, exporting an OSA trace or time tags. Progress is saved after every step, so `--resume` carries on after a stop. At the end it writes `report.html` (every figure and the key numbers from each stage) and `summary.json`. Details: [docs/run_experiment.md](docs/run_experiment.md).
 
 ---
 
@@ -152,15 +167,20 @@ python 02_injection_locking/locking_map.py --temp 25 --slave-mA 400 --voa-dB 20 
 python 03_pulsed/scope_capture.py --mode sim
 python 04_qkd/timetag_qber.py --demo dps
 python 04_qkd/keyrate.py --spools 1 5 10
+python run_experiment.py --mode sim      # all of the above in one go, with a report at the end
 pytest
 ```
 
 On the bench (Windows, Kinesis and NI-VISA installed, serial numbers in `config/bench.toml`):
 
 ```bash
-python 01_characterisation/check_instruments.py
+python 01_characterisation/check_instruments.py          # power meter, KLD101 and TTC001 (laser off)
+python 01_characterisation/set_temperature.py --to 25     # TEC on its own
 python 01_characterisation/li_sweep.py --temp 25 --stop 200 --zero
+python run_experiment.py                                  # or everything, stage by stage
 ```
+
+Close the Kinesis app and the Thorlabs power meter app first: each holds its instrument's USB connection.
 
 If the KLD101 won't connect, add `--mode manual-driver` (you set each current; the script still reads the meter).
 
@@ -168,7 +188,7 @@ If the KLD101 won't connect, add `--mode manual-driver` (you set each current; t
 
 ## Safety built into the code
 
-Per-laser current limits in `config/bench.toml`; refusal to run the FP slave on the 230 mA KLD101; driver polarity and mode checks before switching on; ramped current changes; abort on sensor overload or a current mismatch (open circuit); automatic ramp-down and disable at the end, on error or on Ctrl+C; AWG levels capped from the config; VOA control limited to 5 V.
+Per-laser current limits in `config/bench.toml`; TEC set points limited to 15–35 °C, with the TEC switched off if the temperature runs away (reversed TEC wiring); refusal to run the FP slave on the 230 mA KLD101; driver polarity and mode checks before switching on; ramped current changes; abort on sensor overload or a current mismatch (open circuit); automatic ramp-down and disable at the end, on error or on Ctrl+C; AWG levels capped from the config; VOA control limited to 5 V.
 
 ---
 
@@ -179,7 +199,7 @@ Per-laser current limits in `config/bench.toml`; refusal to run the FP slave on 
 | numpy, scipy, pandas | Numerics, fitting, data handling |
 | matplotlib | Plots |
 | pyvisa | PM100D, AWG-5064 and Tek scope (NI-VISA on Windows; `pyvisa-py` elsewhere) |
-| Thorlabs Kinesis | KLD101 laser drivers (Windows DLL, called through `ctypes`) |
+| Thorlabs Kinesis | KLD101 laser driver and TTC001 TEC controller (Windows DLLs, called through `ctypes`) |
 | pytest | Tests |
 
 ---

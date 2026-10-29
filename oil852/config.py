@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / "config" / "bench.toml"
-DATA_ROOT = REPO_ROOT / "data"
+# run_experiment.py points this at the campaign folder so one campaign keeps all its data together
+DATA_ROOT = Path(os.environ.get("OIL852_DATA_ROOT") or (REPO_ROOT / "data"))
 
 
 @dataclass

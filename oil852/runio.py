@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import platform
 import subprocess
 from datetime import datetime
@@ -17,11 +18,27 @@ def new_run_dir(laser: str, kind: str, temperature_C: float | None, root: Path |
     now = datetime.now()
     t = f"_{temperature_C:g}C" if temperature_C is not None else ""
     d = (root or DATA_ROOT) / now.strftime("%Y-%m-%d") / f"{laser}_{kind}{t}_{now.strftime('%H%M%S')}"
-    d.mkdir(parents=True, exist_ok=False)
+    base, k = d, 1
+    while d.exists():  # two runs in the same second
+        d = base.with_name(f"{base.name}_{k}")
+        k += 1
+    d.mkdir(parents=True)
+    log_run(d)
     return d
 
 
+def log_run(path: Path):
+    """Tell the experiment runner (run_experiment.py) where this script saved its output.
+    It sets OIL852_RUN_LOG to a file; each run folder is appended as one line."""
+    target = os.environ.get("OIL852_RUN_LOG")
+    if target:
+        with open(target, "a", encoding="utf-8") as f:
+            f.write(str(Path(path).resolve()) + "\n")
+
+
 def git_commit() -> str:
+    if os.environ.get("OIL852_NO_GIT"):
+        return "not recorded"
     try:
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO_ROOT,
                               capture_output=True, text=True, timeout=5).stdout.strip() or "none"

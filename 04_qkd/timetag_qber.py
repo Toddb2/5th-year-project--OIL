@@ -30,6 +30,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from oil852.config import DATA_ROOT  # noqa: E402
+from oil852.runio import log_run  # noqa: E402
 
 
 def fold(times_ps, offset_ps, slot_ps, n_slots):
@@ -177,6 +178,7 @@ def main():
     else:
         _sys.exit("BB84 analysis needs Bob's basis choices; not implemented yet.")
     out = a.tags.parent / "qber_results.json"
+    log_run(a.tags.parent)
     out.write_text(json.dumps(res, indent=2))
     for k, v in res.items():
         print(f"{k:32s} {v:.4g}" if isinstance(v, float) else f"{k:32s} {v}")

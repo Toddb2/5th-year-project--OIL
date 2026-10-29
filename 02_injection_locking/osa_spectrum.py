@@ -27,6 +27,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from oil852.config import DATA_ROOT  # noqa: E402
+from oil852.runio import log_run  # noqa: E402
 from oil852.spectrum import analyse_spectrum, load_spectrum, looks_locked, synthetic_fp, to_csv_text  # noqa: E402
 
 
@@ -69,6 +70,7 @@ def main():
     ax.grid(alpha=0.3)
     fig.tight_layout()
     out = a.traces[0].parent
+    log_run(out)
     fig.savefig(out / "spectra.png", dpi=150)
     (out / "spectra_results.json").write_text(json.dumps(results, indent=2))
     print(f"Plot and results saved in {out}")

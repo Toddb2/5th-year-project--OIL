@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from oil852.config import DATA_ROOT, load_config  # noqa: E402
+from oil852.runio import log_run  # noqa: E402
 from oil852.qkd import (channel_transmittance, dark_count_prob, detection_prob,  # noqa: E402
                         optimal_mu, qber_from_visibility, qber_with_darks)
 
@@ -38,6 +39,7 @@ def main():
     p.add_argument("--bob-loss-dB", type=float, default=3.0, help="Bob's optics (splitter, interferometer, coupling)")
     p.add_argument("--max-km", type=float, default=40.0)
     p.add_argument("--spools", type=float, nargs="*", default=[], help="spool lengths in km to report")
+    p.add_argument("--out", default=None, help="output folder (default data/theory)")
     p.add_argument("--config", default=None)
     a = p.parse_args()
     cfg = load_config(a.config)
@@ -68,8 +70,9 @@ def main():
     for axx in (ax, ax2):
         axx.grid(alpha=0.3, which="both")
     fig.tight_layout()
-    out = DATA_ROOT / "theory"
+    out = _Path(a.out) if a.out else DATA_ROOT / "theory"
     out.mkdir(parents=True, exist_ok=True)
+    log_run(out)
     fig.savefig(out / "keyrate_vs_distance.png", dpi=150)
     report = {}
     for km in [0.0] + list(a.spools):

@@ -7,3 +7,7 @@ venv/
 .idea/
 *.egg-info/
 CLAUDE.md
+
+# rehearsal campaigns from run_experiment.py --mode sim
+data/campaigns/*_sim/
+data/demo_*/

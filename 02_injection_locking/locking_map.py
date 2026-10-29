@@ -48,6 +48,7 @@ def main():
     p.add_argument("--voa-dB", type=float, required=True, help="VOA attenuation from the calibration")
     p.add_argument("--currents", required=True, help='master "start:stop:step" in mA')
     p.add_argument("--mode", choices=["auto", "manual", "sim"], default="auto")
+    p.add_argument("--tuning-pm-per-mA", type=float, default=None, help="measured master tuning (default: config)")
     p.add_argument("--config", default=None)
     p.add_argument("--yes", action="store_true")
     a = p.parse_args()
@@ -116,10 +117,12 @@ def main():
     I = np.array([r["master_mA"] for r in rows])
     L = np.array([r["locked"] for r in rows], bool)
     wins = locked_windows(I, L)
-    tune = float(cfg["injection"]["master_tuning_pm_per_mA"])
+    tune = a.tuning_pm_per_mA or float(cfg["injection"]["master_tuning_pm_per_mA"])
     ghz_per_mA = tune * ghz_per_pm()
-    summary = {"windows_mA": wins, "window_widths_mA": [b - a_ for a_, b in wins],
-               "window_widths_GHz": [(b - a_) * ghz_per_mA for a_, b in wins],
+    # each locked point stands for one current step, so a window spans (end - start + step)
+    widths = [b - a_ + ds for a_, b in wins]
+    summary = {"windows_mA": wins, "window_widths_mA": widths, "step_mA": ds,
+               "window_widths_GHz": [w * ghz_per_mA for w in widths],
                "master_tuning_pm_per_mA": tune}
     (run / "summary.json").write_text(json.dumps(summary, indent=2))
     import matplotlib

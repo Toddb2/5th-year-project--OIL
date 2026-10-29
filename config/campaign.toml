@@ -1,0 +1,76 @@
+# What run_experiment.py does, stage by stage. Edit the lists to change the sweeps.
+# Instrument addresses, serial numbers and safety limits stay in config/bench.toml.
+#
+#   python run_experiment.py --mode sim            # rehearse the whole thing with simulated instruments
+#   python run_experiment.py                       # real bench, all stages in order
+#   python run_experiment.py --stages characterisation
+#   python run_experiment.py --resume data/campaigns/<folder>   # carry on after a stop
+
+[campaign]
+name = "oil852"
+# Stages to run, in order: characterisation, locking, pulsed, qkd
+stages = ["characterisation", "locking", "pulsed", "qkd"]
+# auto          = KLD101, TTC001 and power meter all driven by the script
+# manual-driver = you set each current on the KLD101; the script reads the meter
+# manual        = you type in every reading
+# sim           = simulated instruments, for practice
+mode = "auto"
+# Who sets the laser temperature: "auto" (TTC001 over USB) or "manual" (front panel, when asked)
+tec_control = "auto"
+# What to do when a step fails: "ask" (retry / skip / quit), "skip", or "stop"
+on_error = "ask"
+
+[characterisation]
+laser = "DBR852PN"
+# L-I-V at each temperature, then threshold vs temperature and T0
+temperatures_C = [20.0, 25.0, 30.0]
+stop_mA = 200.0
+settle_s = 0.5
+zero_meter = true           # zero the power meter before the first sweep (laser off)
+# Power stability at one operating point
+stability = true
+stability_temp_C = 25.0
+stability_current_mA = 150.0
+stability_minutes = 10.0
+# Wavelength tuning (you read the peak off the OSA at each current). Set to false to skip.
+tuning = true
+tuning_temperatures_C = [20.0, 25.0, 30.0]
+tuning_currents = "60:200:10"
+
+[locking]
+master_temp_C = 25.0
+# VOA calibration (master on at this current, meter after the VOA)
+voa_master_mA = 150.0
+voa_step_V = 0.1
+# Free-running and locked OSA traces, analysed for SMSR and mode spacing (you export them)
+spectra = true
+# Locking maps: every slave current x every VOA attenuation
+slave_currents_mA = [400.0]
+slave_temp_C = 25.0
+voa_attenuations_dB = [30.0, 25.0, 20.0, 15.0, 10.0]
+master_currents = "80:200:1"
+# Locking theory comparison
+alpha = [3.0, 5.0]
+slave_length_mm = 1.0
+
+[pulsed]
+# AWG double-pulse setup (CH1 slave pulses, CH2 master steps), checked on the scope first
+scope_shots = 20
+scope_channel = 1
+# Slave DC bias points to capture (you set the slave driver each time)
+slave_bias_mA = [250.0, 300.0, 350.0]
+
+[qkd]
+protocols = ["cow", "dps"]  # bb84 patterns can be made, but QBER analysis needs Bob's bases
+slots = 64
+slot_ns = 50.0
+seed = 1
+ch2_amp_V = 0.25            # master step that gives a pi phase shift (measure it in stage 3)
+data_channel = 1
+monitor_constructive = 2
+monitor_destructive = 3
+detection_window_ps = 1000.0
+acquisition_s = 60.0
+# Key-rate model
+rep_MHz = 20.0
+spools_km = [1.0, 2.0, 5.0, 10.0]

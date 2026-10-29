@@ -27,6 +27,7 @@ import numpy as np  # noqa: E402
 
 from oil852.config import DATA_ROOT, load_config  # noqa: E402
 from oil852.locking import coupling_coefficient, ghz_per_pm, locking_range_ghz  # noqa: E402
+from oil852.runio import log_run  # noqa: E402
 
 
 def main():
@@ -36,10 +37,12 @@ def main():
     p.add_argument("--group-index", type=float, default=3.6)
     p.add_argument("--facet-R", type=float, default=0.3)
     p.add_argument("--measured", nargs="*", default=[], help="summary.json files from locking_map.py (uses their VOA setting as -injection ratio)")
+    p.add_argument("--tuning-pm-per-mA", type=float, default=None, help="measured master tuning (default: config)")
+    p.add_argument("--out", default=None, help="output folder (default data/theory)")
     p.add_argument("--config", default=None)
     a = p.parse_args()
     cfg = load_config(a.config)
-    tune = float(cfg["injection"]["master_tuning_pm_per_mA"])
+    tune = a.tuning_pm_per_mA or float(cfg["injection"]["master_tuning_pm_per_mA"])
     ghz_per_mA = tune * ghz_per_pm()
     kappa = coupling_coefficient(a.length_mm, a.group_index, a.facet_R)
     rho = np.linspace(-40, -5, 200)
@@ -66,10 +69,14 @@ def main():
     for axx in (ax, ax2):
         axx.grid(alpha=0.3)
     fig.tight_layout()
-    out = DATA_ROOT / "theory"
+    out = _Path(a.out) if a.out else DATA_ROOT / "theory"
     out.mkdir(parents=True, exist_ok=True)
+    log_run(out)
     fig.savefig(out / "locking_range.png", dpi=150)
     lo, hi = locking_range_ghz(-20, kappa, a.alpha[0])
+    (out / "locking_theory.json").write_text(json.dumps({
+        "kappa_per_s": kappa, "alpha": a.alpha, "tuning_pm_per_mA": tune,
+        "window_at_-20dB_GHz": [float(lo), float(hi)], "window_at_-20dB_mA": float((hi - lo) / ghz_per_mA)}, indent=2))
     print(f"kappa = {kappa:.2e} /s. At -20 dB injection, alpha {a.alpha[0]:g}: {lo:.2f} to +{hi:.2f} GHz "
           f"= {(hi - lo) / ghz_per_mA:.1f} mA of master current.")
     print(f"Saved {out / 'locking_range.png'}")
