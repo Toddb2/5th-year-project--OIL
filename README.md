@@ -75,6 +75,7 @@ Full instrument list, connections and how data reaches the laptop: [docs/instrum
 ├── 04_qkd/                        ← protocol patterns, time-tag QBER/visibility, key rate vs distance
 │
 ├── docs/
+│   ├── bench_notes.md             ← how the bench is actually wired and set, and a log of each session
 │   ├── run_experiment.md          ← how to run the whole experiment, resume it and read the report
 │   ├── bench_settings.md          ← driver/TEC/meter settings, switch-on order, what to expect
 │   ├── instruments_and_data.md    ← every instrument, its connection and software

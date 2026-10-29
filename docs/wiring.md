@@ -13,6 +13,23 @@ Check every link with a meter before powering anything (see [bench_settings.md](
 | 5 | Thermistor | 10 | Laser anode (+) |
 | 6–9 | n/c | | |
 
+## As built (hand-made cables, Oct 2026)
+
+The laser is wired to two chip-side plugs, and plain straight-through extension cables run from
+those to the instruments. Full details and the bring-up log are in [bench_notes.md](bench_notes.md).
+
+| Cable | Chip-side plug (wired to the laser) | Extension (straight-through, pin N to pin N) |
+|---|---|---|
+| Laser, KLD101 9-pin | 8 → laser 10 (anode), 3 → laser 11 (cathode), 4 → laser 3 (PD anode), 2 → laser 4 (PD cathode), 1–5 linked (interlock) | Pins 1, 2, 3, 4, 5, 8 |
+| TEC, TTC001 15-pin | 5–6–7 linked → laser 1 (TEC +), 13–14–15 linked → laser 14 (TEC −), 3 and 4 → laser 5 and 2 (thermistor) | Pins 3, 4, 5, 13 (no links needed: one pin each way carries 0.5 A easily) |
+
+The monitor photodiode is optional in constant-current mode, but it is wired so the L–I sweep can
+log the photodiode current. KLD101 pin 7 (laser cathode for anode-grounded drive) stays empty.
+
+Checks with everything unplugged:
+- 15-pin, at the TTC001 end: 3–4 ≈ 10–12 kΩ, 5–13 ≈ 1.5 Ω. A TEC creeps upwards on an ohmmeter (Seebeck effect); the first reading is the real one.
+- 9-pin: 1–5 ≈ 0 Ω, and each used pin is open to its neighbours.
+
 ## Drivers to the mount
 
 | Link | From | To | Notes |

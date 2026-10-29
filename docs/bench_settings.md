@@ -21,6 +21,8 @@ If the PCB mounts from the group are used instead of the Arroyo, ask the designe
 | TEC current limit | **0.5 A** (the DBR draws about 0.23 A) |
 | Loop | Default PID to start |
 
+Kinesis applies its **Startup** settings to the TTC001 every time it connects. Set the sensor and limit on the Startup tab as well and press **Save**, or it may switch back to Transducer (the display then shows "ErrOr").
+
 Enable it and watch the reading move **towards** 10.00 kΩ and settle within a minute or two. If it runs **away** from the set point, switch off at once: TEC+ and TEC− are swapped. If the TEC current sits at the limit, the heat-sinking is poor.
 
 ## 3. KLD101 (laser driver) settings: output OFF while you set these

@@ -3,7 +3,7 @@
 
 [driver]
 # KLD101 serial number (printed on the K-Cube, starts with 98)
-serial = "98251629"   # DBR852PN master. Second KLD101: 98251513
+serial = "98251513"   # DBR852PN master. Second KLD101: 98251629
 # Folder containing Thorlabs.MotionControl.KCube.LaserDiode.dll (installed with Kinesis)
 kinesis_path = 'C:\Program Files\Thorlabs\Kinesis'
 # Expected polarity. Cathode grounded matches the Thorlabs Type 1 wiring used on this bench.
@@ -16,7 +16,7 @@ voltage_counts_per_V = 1000.0
 
 [tec]
 # TTC001 T-Cube TEC controller serial number (starts with 87)
-serial = "87814308"
+serial = "87814309"
 # Sensor the TTC001 is set to: "TH20kOhm" (10 kOhm thermistor, the butterfly lasers), "TH200kOhm" or "Transducer"
 sensor = "TH20kOhm"
 # Thermistor beta model, used to turn the kOhm set point into deg C. Check the laser datasheet.
