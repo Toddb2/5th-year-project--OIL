@@ -351,6 +351,12 @@ class SimTEC(_TECBase):
     def setpoint_C(self):
         return self._set
 
+    def tec_current_A(self):
+        """Proportional drive clipped at 0.5 A (positive = heating), for the diagnostics."""
+        if not self._enabled:
+            return 0.0
+        return max(-0.5, min(0.5, 0.3 * (self._set - self.read_C())))
+
     def is_enabled(self):
         return self._enabled
 
