@@ -374,6 +374,14 @@ def _characterisation(c: Campaign) -> list[Step]:
                     c.set_value("master_tuning_pm_per_mA", per_I[best] * 1000)
                 return {"runs": [f.parent], "temperature_C": T}
             out.append(Step(f"c.tuning.{_fmt(T)}C", "characterisation", f"Wavelength vs current at {T:g} C", tune))
+
+    def figures(c):
+        dest = (c.folder / "results" / "characterisation") if c.sim else \
+            (REPO_ROOT / "results" / "characterisation" / c.folder.name)
+        c.script("01_characterisation/make_figures.py", "--campaign", c.folder, "--laser", laser, "--out", dest)
+        c.set_value("characterisation_results", str(dest))
+        return {"runs": [dest]}
+    out.append(Step("c.figures", "characterisation", "Results figures and table for stage 1", figures))
     return out
 
 

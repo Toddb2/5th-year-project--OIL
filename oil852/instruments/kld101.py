@@ -144,9 +144,13 @@ class KLD101:
 
     # ---- state --------------------------------------------------------------
     def status(self) -> DriverStatus:
-        self._lib.LD_RequestStatusBits(self.serial)
-        time.sleep(0.05)
-        b = int(self._lib.LD_GetStatusBits(self.serial))
+        b = 0
+        for _ in range(10):  # right after connecting the bits can still read 0 (not yet reported)
+            self._lib.LD_RequestStatusBits(self.serial)
+            time.sleep(0.15)
+            b = int(self._lib.LD_GetStatusBits(self.serial))
+            if b:
+                break
         return DriverStatus(
             output_enabled=bool(b & STATUS_OUTPUT_ENABLED),
             interlock_ok=bool(b & STATUS_INTERLOCK),

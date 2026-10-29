@@ -41,7 +41,12 @@ def main():
     st = driver.status()
     if st.blocking_problems(cfg["driver"]["polarity"]):
         sys.exit("Cannot start: " + "; ".join(st.blocking_problems(cfg["driver"]["polarity"])))
-    Limits.build(cfg, spec, a.current, driver.hardware_limit_mA())
+    limits = Limits.build(cfg, spec, a.current, driver.hardware_limit_mA()).for_meter(cfg, meter)
+    att = float(getattr(meter, "attenuation_dB", 0.0))
+    exp_sensor = max(spec.slope_typ_W_per_A * (a.current - spec.threshold_typ_mA), 0) / 10 ** (att / 10)
+    if exp_sensor > 0.9 * limits.sensor_max_W * 1000:
+        sys.exit(f"About {exp_sensor:.1f} mW would reach a {limits.sensor_max_W * 1000:g} mW sensor. "
+                 "Lower --current or add attenuation ([power_meter] attenuation_dB).")
     if a.mode != "sim":
         print(PREFLIGHT)
         if not confirm(f"Run {spec.name} at {a.current:g} mA for {a.minutes:g} min?", a.yes):
@@ -49,7 +54,8 @@ def main():
 
     run = new_run_dir(spec.name, "stability", a.temp)
     write_meta(run, {"laser": spec.name, "kind": "stability", "tec_setpoint_C": a.temp, "current_mA": a.current,
-                     "minutes": a.minutes, "interval_s": a.interval, "meter": meter.idn, "sensor": meter.sensor})
+                     "minutes": a.minutes, "interval_s": a.interval, "meter": meter.idn, "sensor": meter.sensor,
+                     "attenuation_dB": att})
     log = CsvLog(run / "stability.csv", ["elapsed_s", "power_mW", "current_mA"])
     now = 0.0
     reason = "completed"

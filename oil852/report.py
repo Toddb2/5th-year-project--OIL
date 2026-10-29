@@ -153,6 +153,11 @@ def build_report(c) -> Path:
                     for h in res["mode_hops"]))
             doc.figs(sorted(folder.glob("*.png")), "wavelength tuning")
 
+    res_dir = c.value("characterisation_results")
+    if res_dir and (Path(res_dir) / "results.md").exists():
+        doc.p(f"Stage 1 results figures (PNG + PDF) and table: {res_dir}")
+        doc.figs([Path(res_dir) / f"{n}.png" for n in ("fig_LI", "fig_threshold_T", "fig_IV")], "stage 1 results")
+
     # ---- stage 2 ---------------------------------------------------------------------
     if _step_runs(state, "l."):
         doc.h("Stage 2: injection locking")

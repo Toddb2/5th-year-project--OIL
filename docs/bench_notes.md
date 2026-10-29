@@ -12,7 +12,7 @@ went wrong and why. Read this first before helping at the bench. Update it after
 | Master laser | Thorlabs DBR852PN, 14-pin butterfly, Type 1 | Threshold ~50 mA, ~0.09 W/A |
 | Laser driver (master) | KLD101 **98251513** | Second KLD101: 98251629 (spare / later). Max 230 mA |
 | TEC controller | TTC001 **87814309** | 20 kΩ thermistor range |
-| Power meter | PM100D | NI-VISA driver (Power Meter Driver Switcher), so the Thorlabs app may no longer list it |
+| Power meter | PM100D P0022425, sensor **S154C** (InGaAs, 800–1700 nm, **3 mW max**) | Needs NI-VISA installed; then it appears as `USB0::0x1313::0x8078::P0022425::INSTR` |
 | Slave laser | FPL852P | Not used yet: needs a ≥ 1 A driver |
 
 Serials are in `config/bench.toml`. The "EEPROM serial number mismatch" warning Kinesis shows for the TTC001 is harmless.
@@ -78,6 +78,10 @@ Pinouts used:
   - `No module named 'pyvisa'`: the Python packages weren't installed. Fix: `python -m pip install -r requirements.txt`.
   - `LD_GetMaxCurrentDigPot not found`: this Kinesis version doesn't export it. The driver now treats it and other extras as optional; `01_characterisation/dll_functions.py` lists what the installed DLLs provide.
   - TTC001 read 0.00 kOhm right after connecting (Kinesis showed 12.4 kΩ). The driver now waits up to 5 s for the first reading and no longer applies Kinesis' stored startup settings. Kinesis must be closed.
+- NI-VISA was not installed; after installing it the PM100D is seen over VISA and `check_instruments.py` passes for all three instruments. TEC reached 25 °C (TEC current ±490 mA while settling).
+- The sensor is an S154C, rated to 3 mW. The DBR reaches ~13.5 mW at 200 mA, so sweeps stop themselves near 80 mA unless a fibre attenuator is fitted and `[power_meter] attenuation_dB` is set. Known sensor heads are now recognised automatically.
+- `li_sweep.py` stopped with "polarity is anode_grounded": the KLD101 status bits were read before the cube had reported them (all zero). The driver now waits for real status bits.
+- Stage 1 results: `01_characterisation/make_figures.py` (also run automatically at the end of stage 1 by `run_experiment.py`) writes PNG + PDF figures and a results table to `results/characterisation/`.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
 
 ## Expected values (DBR852PN, 25 °C)

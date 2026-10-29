@@ -46,8 +46,13 @@ on_cmd = "OUTPut{ch}:STATe ON"
 # Leave blank to auto-detect the first Thorlabs PM100-series meter on USB
 resource = ""
 # Maximum power the sensor head can take, in mW (S120C = 50 mW, S121C = 500 mW, S154C = 3 mW).
-# The sweep stops if a reading passes 90 % of this.
-sensor_max_mW = 50.0
+# The sweep stops if a reading passes 90 % of this. The bench sensor is an S154C (InGaAs, 3 mW).
+# Known Thorlabs heads are recognised automatically and the lower of the two limits is used.
+sensor_max_mW = 3.0
+# Fibre attenuator between the laser and the sensor, in dB. Readings are multiplied back up by this,
+# so the saved powers are the laser's output. The DBR852PN gives ~13.5 mW at 200 mA: with the 3 mW
+# S154C use at least 7 dB (10 dB is a standard fibre attenuator). Measure its real loss once.
+attenuation_dB = 0.0
 # Readings averaged per point
 average_count = 50
 

@@ -89,3 +89,21 @@ spools_km = [1.0]
     r2 = subprocess.run([sys.executable, str(ROOT / "run_experiment.py"), "--resume", str(folder)],
                         env=env, cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert r2.returncode == 0 and "already ok" in r2.stdout
+
+
+def test_attenuated_meter_and_sensor_limit():
+    from oil852.bench import AttenuatedMeter, sensor_limit_W
+
+    class Fake:
+        idn = "Thorlabs,PM100D,P0022425,2.6.0"
+        sensor = "S154C,190327300,27-Mrz-2019,1,18,289"
+
+        def power_W(self):
+            return 1e-3
+
+    m = AttenuatedMeter(Fake(), 10.0)
+    assert m.power_W() == pytest.approx(10e-3)
+    assert m.last_raw_W == pytest.approx(1e-3)
+    assert m.sensor.startswith("S154C")
+    cfg = {"power_meter": {"sensor_max_mW": 50.0}}
+    assert sensor_limit_W(cfg, m) == pytest.approx(3e-3)  # S154C is rated to 3 mW

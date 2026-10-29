@@ -104,7 +104,7 @@ The runner works through `config/campaign.toml`. It sets the TTC001 to each temp
 
 ## Stage 1 — Characterisation
 
-`li_sweep.py` steps the master's current through the KLD101, reads the PM100D at every point and fits the threshold (two methods), slope efficiency and series resistance. Repeating it at several TEC temperatures gives the characteristic temperature T0. `wavelength_log.py` records the peak wavelength from the OSA and fits the tuning coefficients, which become the map for steering the master onto a slave mode in stage 2.
+`make_figures.py` turns the runs into dissertation-ready figures (PNG + PDF) and a results table in `results/characterisation/`. `li_sweep.py` steps the master's current through the KLD101, reads the PM100D at every point and fits the threshold (two methods), slope efficiency and series resistance. Repeating it at several TEC temperatures gives the characteristic temperature T0. `wavelength_log.py` records the peak wavelength from the OSA and fits the tuning coefficients, which become the map for steering the master onto a slave mode in stage 2.
 
 ![L-I-V, simulated](docs/img/example_liv_sim.png)
 

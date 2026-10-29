@@ -8,6 +8,42 @@ from dataclasses import dataclass
 from .config import LaserSpec
 
 
+# Thorlabs sensor heads and their maximum power (mW), from the spec sheets
+SENSOR_MAX_MW = {"S120C": 50.0, "S121C": 500.0, "S150C": 5.0, "S151C": 20.0, "S154C": 3.0, "S155C": 20.0}
+
+
+class AttenuatedMeter:
+    """Wraps a power meter read through a fibre attenuator. power_W() is the power before the
+    attenuator (what the laser emits); last_raw_W is what actually reached the sensor."""
+
+    def __init__(self, meter, attenuation_dB: float = 0.0):
+        self.meter = meter
+        self.attenuation_dB = float(attenuation_dB)
+        self.factor = 10 ** (self.attenuation_dB / 10)
+        self.last_raw_W = 0.0
+
+    def power_W(self) -> float:
+        raw = self.meter.power_W()
+        self.last_raw_W = raw
+        return raw * self.factor
+
+    def __getattr__(self, name):
+        return getattr(self.meter, name)
+
+
+def sensor_limit_W(cfg: dict, meter) -> float:
+    """The lower of the configured limit and the known limit of the connected sensor head."""
+    limit = float(cfg["power_meter"]["sensor_max_mW"])
+    fields = [f.strip() for f in str(getattr(meter, "sensor", "")).split(",")]
+    model = next((f for f in fields if f in SENSOR_MAX_MW), None)
+    if model and str(getattr(meter, "idn", "")).startswith("SIM"):
+        return SENSOR_MAX_MW[model] / 1000.0  # simulated head: use its own rating
+    if model and SENSOR_MAX_MW[model] < limit:
+        print(f"  Sensor {model} is rated to {SENSOR_MAX_MW[model]:g} mW; using that instead of {limit:g} mW.")
+        limit = SENSOR_MAX_MW[model]
+    return limit / 1000.0
+
+
 def open_instruments(cfg: dict, mode: str, wavelength_nm: float = 852.0, sim_temperature_C: float = 25.0):
     """mode: 'auto' (KLD101 + PM100), 'manual-driver' (you set current, meter is read),
     'manual' (everything typed in), or 'sim'."""
@@ -18,13 +54,15 @@ def open_instruments(cfg: dict, mode: str, wavelength_nm: float = 852.0, sim_tem
         laser.temperature_C = sim_temperature_C
         driver = SimDriver(laser, full_scale_mA=dcfg["full_scale_mA"], limit_mA=dcfg["full_scale_mA"])
         meter = SimPowerMeter(driver, wavelength_nm)
-        return driver, meter
+        return driver, AttenuatedMeter(meter, pcfg.get("attenuation_dB", 0.0))
     if mode == "manual":
         from .instruments.manual import ManualDriver, ManualPowerMeter
-        return ManualDriver(dcfg["full_scale_mA"]), ManualPowerMeter(wavelength_nm)
+        return ManualDriver(dcfg["full_scale_mA"]), AttenuatedMeter(ManualPowerMeter(wavelength_nm),
+                                                                    pcfg.get("attenuation_dB", 0.0))
 
     from .instruments.pm100 import PM100
-    meter = PM100(pcfg.get("resource", ""), wavelength_nm, int(pcfg.get("average_count", 50)))
+    meter = AttenuatedMeter(PM100(pcfg.get("resource", ""), wavelength_nm, int(pcfg.get("average_count", 50))),
+                            pcfg.get("attenuation_dB", 0.0))
     if mode == "manual-driver":
         from .instruments.manual import ManualDriver
         return ManualDriver(dcfg["full_scale_mA"]), meter
@@ -54,6 +92,10 @@ class Limits:
                              f"(~{hardware_limit_mA:.0f} mA). Lower --stop or raise the limit on the K-Cube.")
         return cls(max_current_mA=requested_stop_mA,
                    sensor_max_W=float(cfg["power_meter"]["sensor_max_mW"]) / 1000.0)
+
+    def for_meter(self, cfg: dict, meter) -> "Limits":
+        self.sensor_max_W = sensor_limit_W(cfg, meter)
+        return self
 
 
 def ramp_to(driver, target_mA: float, from_mA: float, step_mA: float = 5.0, dwell_s: float = 0.15):

@@ -76,15 +76,19 @@ def main():
         print(f"  ! {w}")
 
     hw = driver.hardware_limit_mA()
-    limits = Limits.build(cfg, spec, a.stop, hw)
+    limits = Limits.build(cfg, spec, a.stop, hw).for_meter(cfg, meter)
+    att = float(getattr(meter, "attenuation_dB", 0.0))
     currents = build_currents(a.steps, limits.max_current_mA, spec.threshold_typ_mA)
     expected_mW = max(spec.slope_typ_W_per_A * (limits.max_current_mA - spec.threshold_typ_mA), 0)
     print(f"\n{spec.name} at {a.temp:g} C: {len(currents)} points, 0 to {limits.max_current_mA:g} mA "
           f"(KLD101 limit {'~%.0f mA' % hw if hw else 'not read'}).")
-    print(f"Expected top power ~{expected_mW:.1f} mW; sensor limit {limits.sensor_max_W * 1000:g} mW. "
-          f"Meter: {meter.idn} / sensor {meter.sensor}")
-    if expected_mW > 0.9 * limits.sensor_max_W * 1000:
-        print("  ! The expected power is close to the sensor limit. Add an attenuator or lower --stop.")
+    at_sensor = expected_mW / 10 ** (att / 10)
+    print(f"Expected top power ~{expected_mW:.1f} mW ({at_sensor:.2f} mW at the sensor after {att:g} dB); "
+          f"sensor limit {limits.sensor_max_W * 1000:g} mW. Meter: {meter.idn} / sensor {meter.sensor}")
+    if at_sensor > 0.9 * limits.sensor_max_W * 1000:
+        I_ok = spec.threshold_typ_mA + 0.85 * limits.sensor_max_W * 1000 * 10 ** (att / 10) / max(spec.slope_typ_W_per_A, 1e-6)
+        print(f"  ! That is over the sensor limit. The sweep will stop itself near {I_ok:.0f} mA. For the full range put a "
+              f"fibre attenuator in front of the sensor and set [power_meter] attenuation_dB.")
     if a.mode != "sim":
         print(PREFLIGHT)
         if not confirm("All checked and ready to switch the laser on?", a.yes):
@@ -100,6 +104,7 @@ def main():
                      "stop_mA": limits.max_current_mA, "currents_mA": currents, "settle_s": a.settle,
                      "reads_per_point": a.reads, "meter": meter.idn, "sensor": meter.sensor,
                      "meter_wavelength_nm": meter.wavelength_nm, "driver_hw_limit_mA": hw,
+                     "attenuation_dB": att, "sensor_limit_mW": limits.sensor_max_W * 1000,
                      "status_bits": st.raw_bits, "note": a.note})
 
     now_mA, t0, stop_reason = 0.0, time.time(), "completed"
@@ -125,8 +130,8 @@ def main():
             pd = f"{rd.pd_current_mA:.4f}" if rd.pd_current_mA is not None else "-"
             print(f"{I:7.1f} {rd.current_mA:8.2f} {P:9.4f} {v:>7} {pd:>8}")
 
-            if P / 1000 > 0.9 * limits.sensor_max_W:
-                stop_reason = "power near sensor limit"
+            if getattr(meter, "last_raw_W", P / 1000) > 0.9 * limits.sensor_max_W:
+                stop_reason = "power near sensor limit (add attenuation to go higher)"
                 break
             if not manual and I >= 10 and rd.current_mA < 0.8 * I:
                 stop_reason = (f"measured current {rd.current_mA:.1f} mA is well below the set point: "
