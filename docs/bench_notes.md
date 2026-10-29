@@ -73,6 +73,11 @@ Pinouts used:
   - Links on the chip-side 15-pin are good: 5–6–7 and 13–14–15 all read ≤ 0.1 Ω.
   - The extension carries only pins 3, 4, 5 and 13, which is correct: the chip-side plug does the linking.
   - **Next:** measure pins 5–13 at the TTC001 end of the extension (whole chain, laser connected). It should read ~1.5 Ω. Open means the break is in the extension or at the chip-plug cups. Then, enabled, check the TTC001 TEC current reads near the limit.
+- **Found the TEC break:** the extension's chip-side end had the TEC− wire on cup 12 instead of 13 (pin 12 is unconnected on the chip plug). Moved to 13.
+- First `check_instruments.py` run on the laptop:
+  - `No module named 'pyvisa'`: the Python packages weren't installed. Fix: `python -m pip install -r requirements.txt`.
+  - `LD_GetMaxCurrentDigPot not found`: this Kinesis version doesn't export it. The driver now treats it and other extras as optional; `01_characterisation/dll_functions.py` lists what the installed DLLs provide.
+  - TTC001 read 0.00 kOhm right after connecting (Kinesis showed 12.4 kΩ). The driver now waits up to 5 s for the first reading and no longer applies Kinesis' stored startup settings. Kinesis must be closed.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
 
 ## Expected values (DBR852PN, 25 °C)

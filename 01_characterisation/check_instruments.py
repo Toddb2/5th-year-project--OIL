@@ -41,18 +41,29 @@ def check_driver(cfg):
     d = cfg["driver"]
     k = KLD101(d["serial"], d["kinesis_path"], d["full_scale_mA"], d.get("voltage_counts_per_V", 1000.0))
     k.connect()
+    try:
+        _report_driver(k, d)
+    finally:
+        k.close()
+
+
+def _report_driver(k, d):
     st = k.status()
     print(f"KLD101 {d['serial']}: status bits 0x{st.raw_bits:08X}")
     for field in ("output_enabled", "interlock_ok", "key_switch_on", "constant_power_mode", "polarity",
                   "current_limit_reached", "open_circuit", "psu_ok"):
         print(f"  {field:22s} {getattr(st, field)}")
     hw = k.hardware_limit_mA()
-    print(f"  current limit on K-Cube ~{hw:.0f} mA" if hw else "  current limit: not read")
+    print(f"  current limit on K-Cube ~{hw:.0f} mA" if hw else
+          "  current limit: not readable with this Kinesis version (check it says 200 mA in Kinesis)")
+    extras = sorted(set(("LD_SetOpenLoopMode", "LD_GetLaserDiodeCurrentReading", "LD_GetVoltageReading",
+                         "LD_GetPhotoCurrentReading", "LD_GetMaxCurrentDigPot")) - k._has)
+    if extras:
+        print(f"  not in this Kinesis version: {', '.join(extras)}")
     rd = k.read()
     print(f"  current {rd.current_mA:.2f} mA, voltage {rd.voltage_V}, PD {rd.pd_current_mA}")
     for issue in st.blocking_problems(d["polarity"]) + st.warnings():
         print(f"  ! {issue}")
-    k.close()
 
 
 def check_tec(cfg):
@@ -60,10 +71,16 @@ def check_tec(cfg):
 
     tec = open_tec(cfg, "auto")
     tec.connect()
+    try:
+        _report_tec(tec, cfg)
+    finally:
+        tec.close()
+
+
+def _report_tec(tec, cfg):
     print(f"TTC001 {cfg['tec']['serial']}: sensor {tec.sensor}")
-    print(f"  reading {tec.read_C():.2f} C, set point {tec.setpoint_C():.2f} C, "
-          f"current limit {tec.current_limit_A():.2f} A")
-    tec.close()
+    print(f"  reading {tec.read_display():.2f} kOhm = {tec.read_C():.2f} C, set point {tec.setpoint_C():.2f} C, "
+          f"TEC current {tec.tec_current_A() * 1000:.0f} mA, limit {tec.current_limit_A():.2f} A")
 
 
 def check_others(cfg):

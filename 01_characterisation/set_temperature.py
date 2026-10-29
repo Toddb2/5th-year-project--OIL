@@ -44,7 +44,8 @@ def main():
             print("TEC output disabled.")
         elif a.read:
             while True:
-                print(f"\r{tec.read_C():8.3f} C", end="", flush=True)
+                extra = f"   TEC {tec.tec_current_A() * 1000:5.0f} mA" if hasattr(tec, "tec_current_A") else ""
+                print(f"\r{tec.read_C():8.3f} C{extra}", end="", flush=True)
                 time.sleep(1)
         else:
             print(f"Going to {tec.describe(a.to)}")

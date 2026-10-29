@@ -149,10 +149,12 @@ class TTC001(_TECBase):
         L.TC_SetSensorType.argtypes = [c, ctypes.c_int]
         L.TC_SetSensorType.restype = ctypes.c_short
         L.TC_GetCurrentLimit.argtypes = [c]
-        L.TC_GetCurrentLimit.restype = ctypes.c_int16
-        if hasattr(L, "TC_LoadSettings"):
-            L.TC_LoadSettings.argtypes = [c]
-            L.TC_LoadSettings.restype = ctypes.c_bool
+        L.TC_GetCurrentLimit.restype = ctypes.c_uint16
+        L.TC_GetCurrentReading.argtypes = [c]
+        L.TC_GetCurrentReading.restype = ctypes.c_int16  # mA; sign shows heating or cooling
+        if hasattr(L, "TC_RequestReadings"):
+            L.TC_RequestReadings.argtypes = [c]
+            L.TC_RequestReadings.restype = ctypes.c_short
 
     def connect(self):
         if self._lib.TLI_BuildDeviceList() != 0:
@@ -167,21 +169,35 @@ class TTC001(_TECBase):
         if code != 0:
             raise TECError(f"TC_Open failed with Kinesis error code {code}")
         self._open = True
-        if hasattr(self._lib, "TC_LoadSettings"):
-            self._lib.TC_LoadSettings(self.serial)
+        try:
+            self._after_open()
+        except BaseException:
+            self.close()  # never leave the T-Cube held open after a failed connect
+            raise
+
+    def _after_open(self):
+        # Not TC_LoadSettings: that applies the Kinesis startup settings, which may say "Transducer".
         self._lib.TC_StartPolling(self.serial, self.poll_ms)
         time.sleep(1.0)
         got = int(self._lib.TC_GetSensorType(self.serial))
         want = SENSOR_CODES[self.sensor]
+        names = {v: k for k, v in SENSOR_CODES.items()}
         if got != want:
-            names = {v: k for k, v in SENSOR_CODES.items()}
             print(f"  TTC001 sensor type was {names.get(got, got)}; setting {self.sensor}.")
             self._lib.TC_SetSensorType(self.serial, want)
+        # readings arrive with polling; give it a few seconds after connecting or a sensor change
+        raw, t0 = 0.0, time.time()
+        while time.time() - t0 < 5.0:
+            if hasattr(self._lib, "TC_RequestReadings"):
+                self._lib.TC_RequestReadings(self.serial)
             time.sleep(0.5)
-        raw = self.read_display()
+            raw = self.read_display()
+            if raw != 0:
+                break
         if self.thermistor and not (0.3 < raw < 150):
-            raise TECError(f"TTC001 reads {raw:.2f} kOhm: no thermistor seen (open circuit or wrong pins 3/4). "
-                           "Fix the wiring before enabling the TEC.")
+            now = names.get(int(self._lib.TC_GetSensorType(self.serial)), "?")
+            raise TECError(f"TTC001 reads {raw:.2f} (sensor type now {now}). If Kinesis shows ~10-12 kOhm, close "
+                           "Kinesis and retry; otherwise no thermistor is seen on pins 3/4.")
 
     def close(self):
         if self._open:
@@ -207,6 +223,9 @@ class TTC001(_TECBase):
 
     def current_limit_A(self) -> float:
         return int(self._lib.TC_GetCurrentLimit(self.serial)) / 1000.0
+
+    def tec_current_A(self) -> float:
+        return int(self._lib.TC_GetCurrentReading(self.serial)) / 1000.0
 
     def is_enabled(self) -> bool:
         return bool(self._enabled)
