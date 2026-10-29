@@ -43,14 +43,20 @@ def main():
             tec.disable()
             print("TEC output disabled.")
         elif a.read:
+            hist = []
+            print("Temperature, TEC current, and the spread over the last 2 minutes (settled = spread under ~0.1 C)")
             while True:
-                extra = f"   TEC {tec.tec_current_A() * 1000:5.0f} mA" if hasattr(tec, "tec_current_A") else ""
-                print(f"\r{tec.read_C():8.3f} C{extra}", end="", flush=True)
+                T = tec.read_C()
+                hist = (hist + [(time.time(), T)])[-120:]
+                Ts = [x for _, x in hist]
+                extra = f"   TEC {tec.tec_current_A() * 1000:+5.0f} mA" if hasattr(tec, "tec_current_A") else ""
+                print(f"\r{T:8.3f} C{extra}   last {len(Ts):3d} s: {min(Ts):6.2f} to {max(Ts):6.2f} C "
+                      f"(spread {max(Ts) - min(Ts):.2f})   ", end="", flush=True)
                 time.sleep(1)
         else:
             print(f"Going to {tec.describe(a.to)}")
             T = tec.go_to(a.to, float(t.get("tolerance_C", 0.05)), float(t.get("hold_s", 30)),
-                          float(t.get("timeout_s", 600)))
+                          float(t.get("timeout_s", 900)), ramp_C_per_min=float(t.get("ramp_C_per_min", 3.0)))
             print(f"Holding {T:.3f} C. The TEC stays on.")
     except KeyboardInterrupt:
         print()

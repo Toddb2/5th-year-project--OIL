@@ -162,8 +162,15 @@ class Campaign:
         if self._tec_at is not None and abs(self._tec_at - temp_C) < 1e-6:
             return
         self.log(f"  TEC -> {self._tec.describe(temp_C)}")
-        T = self._tec.go_to(temp_C, float(tcfg.get("tolerance_C", 0.05)), float(tcfg.get("hold_s", 30)),
-                            float(tcfg.get("timeout_s", 600)))
+        from .instruments.tec import TECError
+        try:
+            T = self._tec.go_to(temp_C, float(tcfg.get("tolerance_C", 0.05)), float(tcfg.get("hold_s", 30)),
+                                float(tcfg.get("timeout_s", 900)),
+                                ramp_C_per_min=float(tcfg.get("ramp_C_per_min", 3.0)))
+        except TECError as exc:
+            self._tec_at = None
+            print()
+            raise StepFailed(f"TEC: {exc}") from exc
         self._tec_at = temp_C
         self.log(f"  TEC holding {T:.3f} C")
 

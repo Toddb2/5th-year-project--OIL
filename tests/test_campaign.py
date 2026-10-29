@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -35,10 +36,23 @@ def test_runaway_disables_tec():
         def read_C(self):  # heats when asked to cool
             self._advance()
             return 2 * 25.0 - self._T
-    tec = Backwards(tau_s=0.05)
-    with pytest.raises(TECError, match="running away"):
-        tec.go_to(20.0, hold_s=0.1, timeout_s=5)
+    tec = Backwards(tau_s=3.0)  # keeps drifting the wrong way, as a reversed TEC does
+    with pytest.raises(TECError, match="moved steadily away"):
+        tec.go_to(20.0, hold_s=0.1, timeout_s=10)
     assert not tec.is_enabled()
+
+
+def test_overshoot_is_not_a_runaway():
+    import math
+
+    class Ringing(SimTEC):
+        """Damped oscillation about the target, like the bench TTC001 after a step."""
+        def read_C(self):
+            t = time.time() - self.t_start
+            return self._set + 4.0 * math.exp(-t / 1.0) * math.cos(2 * math.pi * t / 1.5)
+    tec = Ringing(tau_s=0.05)
+    tec.t_start = time.time()
+    assert tec.go_to(20.0, tol_C=0.05, hold_s=0.1, timeout_s=15) == pytest.approx(20.0, abs=0.05)
 
 
 def test_voa_lookup(tmp_path):

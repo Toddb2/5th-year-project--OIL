@@ -25,10 +25,12 @@ beta_K = 3950.0
 # The scripts refuse set points outside this range (below ~15 C risks condensation on the laser)
 min_C = 15.0
 max_C = 35.0
-# Settling: within tolerance_C for hold_s seconds; give up after timeout_s
+# Settling: within tolerance_C for hold_s seconds; give up after timeout_s.
+# Temperature changes ramp the set point at ramp_C_per_min to limit overshoot.
 tolerance_C = 0.05
 hold_s = 30.0
-timeout_s = 600.0
+timeout_s = 900.0
+ramp_C_per_min = 3.0
 
 [voa]
 # Who sets the VOA control voltage: "manual" (you, when asked), "awg" (AWG channel in DC mode)

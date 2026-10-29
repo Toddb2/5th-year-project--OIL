@@ -65,43 +65,80 @@ class _TECBase:
             return f"{temp_C:g} C (= {self.to_display(temp_C):.2f} kOhm on the TTC001 display)"
         return f"{temp_C:g} C"
 
+    def _current_str(self) -> str:
+        try:
+            return f", TEC {self.tec_current_A() * 1000:+5.0f} mA"
+        except Exception:
+            return ""
+
+    def _check_bounds(self, T: float):
+        """Hard limits, whatever the cause: well outside the allowed range means something is wrong."""
+        if T < self.min_C - 3 or T > self.max_C + 5:
+            self.disable()
+            raise TECError(f"Temperature {T:.2f} C is outside the safe range ({self.min_C - 3:g}-{self.max_C + 5:g} C). "
+                           "TEC output disabled. Check the TEC wiring (TEC+ and TEC- swapped?) and the heatsink.")
+
     def wait_until_stable(self, target_C: float, tol_C: float = 0.05, hold_s: float = 30.0,
-                          timeout_s: float = 600.0, runaway_C: float = 3.0, poll_s: float = 1.0) -> float:
+                          timeout_s: float = 900.0, diverge_s: float = 120.0, poll_s: float = 1.0) -> float:
         """Wait until the reading stays within tol_C of target for hold_s.
 
-        Disables the TEC and raises if the temperature moves AWAY from the target by more than
-        runaway_C beyond where it started (TEC+ and TEC- swapped), or on timeout.
+        Overshoot is normal after a change, so the runaway check only trips if the error has kept
+        growing for diverge_s (TEC+ and TEC- swapped), or the temperature leaves the safe range.
         """
         t0 = time.time()
-        start_err = abs(self.read_C() - target_C)
+        hist: list[tuple[float, float]] = []
         stable_since = None
         last_print = 0.0
         while True:
             T = self.read_C()
             err = abs(T - target_C)
             now = time.time()
-            if err > start_err + runaway_C:
-                self.disable()
-                raise TECError(f"Temperature is running away ({T:.2f} C, target {target_C:g} C). TEC output "
-                               "disabled. TEC+ and TEC- are probably swapped: switch off and swap them.")
+            self._check_bounds(T)
+            hist.append((now, err))
+            hist = [h for h in hist if h[0] >= now - diverge_s]
+            if now - t0 >= diverge_s and len(hist) > 3:
+                errs = [e for _, e in hist]
+                still_growing = errs[-1] >= max(errs) - 0.1 and min(errs) >= errs[0] - 0.1
+                if still_growing and errs[-1] - errs[0] > 1.0 and errs[-1] > 2.0:
+                    self.disable()
+                    raise TECError(f"Temperature has moved steadily away from {target_C:g} C for {diverge_s:g} s "
+                                   f"(now {T:.2f} C). TEC output disabled. TEC+ and TEC- are probably swapped.")
             if err <= tol_C:
                 stable_since = stable_since or now
                 if now - stable_since >= hold_s:
-                    print(f"\r  TEC stable at {T:.3f} C (target {target_C:g} C)            ")
+                    print(f"\r  TEC stable at {T:.3f} C (target {target_C:g} C)                        ")
                     return T
             else:
                 stable_since = None
             if now - t0 > timeout_s:
                 raise TECError(f"TEC did not settle within {timeout_s:g} s (at {T:.2f} C, target {target_C:g} C). "
-                               "Check the TEC current limit and the heatsink.")
+                               "If it keeps swinging either side of the target, lower the TTC001 loop gains in Kinesis; "
+                               "if it never gets there, check the current limit and the heatsink.")
             if now - last_print > 2:
                 held = f", holding {now - stable_since:4.0f}/{hold_s:g} s" if stable_since else ""
-                print(f"\r  TEC {T:7.3f} C -> {target_C:g} C{held}      ", end="", flush=True)
+                print(f"\r  TEC {T:7.3f} C -> {target_C:g} C{self._current_str()}{held}      ", end="", flush=True)
                 last_print = now
             time.sleep(poll_s)
 
-    def go_to(self, temp_C: float, tol_C: float = 0.05, hold_s: float = 30.0, timeout_s: float = 600.0) -> float:
+    def go_to(self, temp_C: float, tol_C: float = 0.05, hold_s: float = 30.0, timeout_s: float = 900.0,
+              ramp_C_per_min: float | None = 3.0) -> float:
+        """Move the set point gradually (less overshoot and integral wind-up), then wait to settle."""
         self.check_range(temp_C)
+        if ramp_C_per_min:
+            sp = self.read_C()
+            if not self.is_enabled():
+                self.set_C(min(max(sp, self.min_C), self.max_C))
+                self.enable()
+            step = ramp_C_per_min * 10.0 / 60.0  # one set-point move every 10 s
+            while abs(temp_C - sp) > step:
+                sp += step if temp_C > sp else -step
+                self.set_C(min(max(sp, self.min_C), self.max_C))
+                for _ in range(10):
+                    T = self.read_C()
+                    self._check_bounds(T)
+                    print(f"\r  TEC {T:7.3f} C, set point ramping {sp:6.2f} -> {temp_C:g} C{self._current_str()}   ",
+                          end="", flush=True)
+                    time.sleep(1.0)
         self.set_C(temp_C)
         if not self.is_enabled():
             self.enable()
@@ -328,11 +365,12 @@ class SimTEC(_TECBase):
     def current_limit_A(self):
         return 0.5
 
-    def go_to(self, temp_C, tol_C=0.05, hold_s=30.0, timeout_s=600.0):
-        return super().go_to(temp_C, tol_C, min(hold_s, 0.3), timeout_s)
+    def go_to(self, temp_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, ramp_C_per_min=None):
+        return super().go_to(temp_C, tol_C, min(hold_s, 0.3), timeout_s, ramp_C_per_min=None)
 
-    def wait_until_stable(self, target_C, tol_C=0.05, hold_s=30.0, timeout_s=600.0, runaway_C=3.0, poll_s=1.0):
-        return super().wait_until_stable(target_C, tol_C, min(hold_s, 0.3), timeout_s, runaway_C, poll_s=0.05)
+    def wait_until_stable(self, target_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, diverge_s=120.0, poll_s=1.0):
+        return super().wait_until_stable(target_C, tol_C, min(hold_s, 0.3), timeout_s, min(diverge_s, 2.0),
+                                         poll_s=0.05)
 
 
 def open_tec(cfg: dict, mode: str):
