@@ -9,7 +9,9 @@ from .config import LaserSpec
 
 
 # Thorlabs sensor heads and their maximum power (mW), from the spec sheets
-SENSOR_MAX_MW = {"S120C": 50.0, "S121C": 500.0, "S150C": 5.0, "S151C": 20.0, "S154C": 3.0, "S155C": 20.0}
+# (S130C: 500 mW with its slide filter in, 5 mW with it out; the meter detects the slider itself)
+SENSOR_MAX_MW = {"S120C": 50.0, "S121C": 500.0, "S130C": 500.0, "S150C": 5.0, "S151C": 20.0, "S154C": 3.0,
+                 "S155C": 20.0}
 
 
 class AttenuatedMeter:

@@ -12,7 +12,7 @@ went wrong and why. Read this first before helping at the bench. Update it after
 | Master laser | Thorlabs DBR852PN, 14-pin butterfly, Type 1 | Threshold ~50 mA, ~0.09 W/A |
 | Laser driver (master) | KLD101 **98251513** | Second KLD101: 98251629 (spare / later). Max 230 mA |
 | TEC controller | TTC001 **87814309** | 20 kΩ thermistor range |
-| Power meter | PM100D P0022425, sensor **S154C** (InGaAs, 800–1700 nm, **3 mW max**) | Needs NI-VISA installed; then it appears as `USB0::0x1313::0x8078::P0022425::INSTR` |
+| Power meter | PM100D P0022425 with an **S130C** (Si, 400–1100 nm), slider on **500 mW** | Needs NI-VISA installed; then it appears as `USB0::0x1313::0x8078::P0022425::INSTR`. The S154C (InGaAs, 3 mW max) is the spare head: too small for the DBR above ~80 mA |
 | Slave laser | FPL852P | Not used yet: needs a ≥ 1 A driver |
 
 Serials are in `config/bench.toml`. The "EEPROM serial number mismatch" warning Kinesis shows for the TTC001 is harmless.
@@ -82,7 +82,18 @@ Pinouts used:
 - The sensor is an S154C, rated to 3 mW. The DBR reaches ~13.5 mW at 200 mA, so sweeps stop themselves near 80 mA unless a fibre attenuator is fitted and `[power_meter] attenuation_dB` is set. Known sensor heads are now recognised automatically.
 - `li_sweep.py` stopped with "polarity is anode_grounded": the KLD101 status bits were read before the cube had reported them (all zero). The driver now waits for real status bits.
 - Stage 1 results: `01_characterisation/make_figures.py` (also run automatically at the end of stage 1 by `run_experiment.py`) writes PNG + PDF figures and a results table to `results/characterisation/`.
+- Swapped the S154C for an S130C (slider on 500 mW): no attenuator needed for the full 200 mA sweep.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
+
+## Plan from here
+
+1. **Today:** pull; S130C on the meter (slider 500 mW); `check_instruments.py`; TEC settled at 25 °C; first light `li_sweep.py --temp 25 --stop 80 --zero`.
+2. **Stage 1:** `run_experiment.py --stages characterisation` (L–I–V at 20/25/30 °C, T0, 10 min stability; OSA tuning when booked; skip with `s` otherwise). Results in `results/characterisation/`; commit them.
+3. **OSA session:** wavelength vs current and temperature (tuning map, mode hops, SMSR). Put the measured pm/mA into `[injection] master_tuning_pm_per_mA`.
+4. **Passive parts with the master as the source:** insertion loss and split ratios of the 99:1 couplers, circulator loss and isolation, PM fibre connectors. Then `voa_calibration.py`.
+5. **AWG into the scope (50 Ω), no laser:** confirm the double-pulse and protocol patterns with `scope_capture.py`.
+6. **Slave:** needs a ≥ 1 A driver (ask Ross). Characterise the FPL852P, then stage 2 locking maps, stage 3 gain switching, stage 4 QKD.
+7. **Throughout:** write up methods and results as each stage closes.
 
 ## Expected values (DBR852PN, 25 °C)
 
