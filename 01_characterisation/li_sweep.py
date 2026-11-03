@@ -62,7 +62,7 @@ def main():
 
     cfg = load_config(a.config)
     spec = laser_spec(cfg, a.laser)
-    driver, meter = open_instruments(cfg, a.mode, sim_temperature_C=a.temp)
+    driver, meter = open_instruments(cfg, a.mode, sim_temperature_C=a.temp, spec=spec)
     manual = a.mode in ("manual", "manual-driver")
     driver.connect()
 

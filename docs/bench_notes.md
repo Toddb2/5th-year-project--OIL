@@ -93,6 +93,10 @@ Pinouts used:
 - TEC oscillating between ~23 and ~27 °C with the current pinned at ±490 mA: the loop gains (P 15, I 4, D 60) were too high for this mount. Lowered (P ~5, I ~1) on both the Current and Startup tabs and saved to the device; check it settles.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
 
+## FP slave (FPL852P) before the 1 A driver
+
+Spec: threshold 240–300 mA, 0.51 W/A, 280–320 mW at 900–1000 mA, 14-pin butterfly Type 1 (same pinout as the DBR, so the same cables), 10 kΩ thermistor, monitor PD, PM fibre FC/APC. On the 230 mA KLD101 it stays below threshold: I–V, spontaneous emission and the FP mode comb only (`01_characterisation/fp_subthreshold.py`). Its `max_current_mA` in `config/bench.toml` is 0 (blocked) until Todd sets it to 200 by hand for this.
+
 ## Plan from here
 
 1. **Today:** pull; S130C on the meter (slider 500 mW); `check_instruments.py`; TEC settled at 25 °C; first light `li_sweep.py --temp 25 --stop 80 --zero`.

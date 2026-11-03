@@ -46,13 +46,15 @@ def sensor_limit_W(cfg: dict, meter) -> float:
     return limit / 1000.0
 
 
-def open_instruments(cfg: dict, mode: str, wavelength_nm: float = 852.0, sim_temperature_C: float = 25.0):
+def open_instruments(cfg: dict, mode: str, wavelength_nm: float = 852.0, sim_temperature_C: float = 25.0,
+                     spec: LaserSpec | None = None):
     """mode: 'auto' (KLD101 + PM100), 'manual-driver' (you set current, meter is read),
     'manual' (everything typed in), or 'sim'."""
     dcfg, pcfg = cfg["driver"], cfg["power_meter"]
     if mode == "sim":
         from .instruments.sim import SimDriver, SimLaser, SimPowerMeter
-        laser = SimLaser()
+        laser = SimLaser() if spec is None else SimLaser(ith_25C_mA=spec.threshold_typ_mA,
+                                                         slope_W_per_A=spec.slope_typ_W_per_A)
         laser.temperature_C = sim_temperature_C
         driver = SimDriver(laser, full_scale_mA=dcfg["full_scale_mA"], limit_mA=dcfg["full_scale_mA"])
         meter = SimPowerMeter(driver, wavelength_nm)

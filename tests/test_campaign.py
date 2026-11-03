@@ -121,3 +121,16 @@ def test_attenuated_meter_and_sensor_limit():
     assert m.sensor.startswith("S154C")
     cfg = {"power_meter": {"sensor_max_mW": 50.0}}
     assert sensor_limit_W(cfg, m) == pytest.approx(3e-3)  # S154C is rated to 3 mW
+
+
+def test_fp_subthreshold_demo(tmp_path):
+    env = dict(os.environ, OIL852_DATA_ROOT=str(tmp_path), OIL852_NO_GIT="1", MPLBACKEND="Agg")
+    r = subprocess.run([sys.executable, str(ROOT / "01_characterisation" / "fp_subthreshold.py"), "--demo"],
+                       env=env, cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    res = json.loads((tmp_path / "demo_fp" / "results" / "results.json").read_text())
+    assert res["mode_spacing_nm"] == pytest.approx(0.11, abs=0.005)
+    assert 0.5 < res["cavity_length_mm"] < 1.5
+    run = res["runs"][0]
+    assert run["lasing_onset_mA"] is None  # all below threshold
+    assert run["iv"]["series_resistance_ohm"] == pytest.approx(1.2, abs=0.2)
