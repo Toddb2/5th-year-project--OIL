@@ -22,7 +22,13 @@ class PM100:
 
         self._rm = pyvisa.ResourceManager()
         if not resource:
-            candidates = [r for r in self._rm.list_resources() if THORLABS_VID in r.lower() or "1313" in r]
+            listed = set(self._rm.list_resources())
+            try:  # some VISA set-ups only list USB meters with an explicit USB query
+                listed |= set(self._rm.list_resources("USB?*::INSTR"))
+            except Exception:
+                pass
+            # PM100-series product IDs are 0x8070-0x807F; other Thorlabs USB devices (the CCS) are not meters
+            candidates = sorted(r for r in listed if (THORLABS_VID in r.lower() or "1313" in r) and "::0x807" in r.lower())
             if not candidates:
                 raise PM100Error("No Thorlabs power meter found over VISA. Check USB, and on Windows use the "
                                  "Power Meter Driver Switcher to select the NI-VISA driver.")

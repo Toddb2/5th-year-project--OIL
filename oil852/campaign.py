@@ -163,16 +163,21 @@ class Campaign:
             return
         self.log(f"  TEC -> {self._tec.describe(temp_C)}")
         from .instruments.tec import TECError
+        mean_mode = tcfg.get("settle", "strict") == "mean"
+        tol = float(tcfg.get("mean_tolerance_C", 0.2) if mean_mode else tcfg.get("tolerance_C", 0.05))
+        avg = float(tcfg.get("mean_window_s", 20.0)) if mean_mode else 0.0
+        if mean_mode:
+            self.log(f"  (settling on the {avg:g} s mean to within {tol:g} C: [tec] settle = \"mean\")")
         try:
-            T = self._tec.go_to(temp_C, float(tcfg.get("tolerance_C", 0.05)), float(tcfg.get("hold_s", 30)),
-                                float(tcfg.get("timeout_s", 900)),
-                                ramp_C_per_min=float(tcfg.get("ramp_C_per_min", 3.0)))
+            T = self._tec.go_to(temp_C, tol, float(tcfg.get("hold_s", 30)), float(tcfg.get("timeout_s", 900)),
+                                ramp_C_per_min=float(tcfg.get("ramp_C_per_min", 3.0)), average_s=avg)
         except TECError as exc:
             self._tec_at = None
             print()
             raise StepFailed(f"TEC: {exc}") from exc
         self._tec_at = temp_C
-        self.log(f"  TEC holding {T:.3f} C")
+        swing = getattr(self._tec, "last_swing_C", None)
+        self.log(f"  TEC holding {T:.3f} C" + (f" (mean; reading swings {swing:.2f} C)" if swing is not None else ""))
 
     # ---- VOA ---------------------------------------------------------------------
     def voa_control(self) -> str:

@@ -117,6 +117,9 @@ The TEC heats and cools (wiring and polarity fine), but the loop is in a limit c
 - Next test: `01_characterisation/tec_wavelength_check.py` uses the laser wavelength (~0.06 nm/°C on the CCS175) as a second thermometer while the TEC cycles, to tell a real temperature swing from a corrupted reading.
 - `check_instruments.py` failed with everything still unplugged from the pin checks (PM100D missing, KLD101 power-supply bit off, TTC001 reading 0): reconnect the cables, the K-Cube power supplies and the meter's USB before scripts.
 
+- `check_instruments.py` found the CCS but not the PM100D, although NI VISA Interactive Control listed both. `[power_meter] resource` is now set to `USB0::0x1313::0x8078::P0022425::INSTR` so the meter is opened directly, and auto-detect also tries an explicit USB query.
+- **Stage 1 while the TEC cycles:** `[tec] settle = "mean"` in `config/bench.toml` waits for the 20 s mean of the reading to sit within 0.2 °C of the target instead of every reading within 0.05 °C. The runner logs the swing at each temperature. Results taken this way are **provisional**; set `settle = "strict"` and repeat once the TEC holds. How much the laser itself swings comes from `tec_wavelength_check.py`.
+
 #### If the reading is pickup
 
 1. **Does it scale with TEC current?** In Kinesis lower the TTC001 current limit from 500 to 200 mA (Current and Startup tabs, Save) and re-run `tec_wavelength_check.py`. Electrical pickup shrinks in proportion (~3.7 → ~1.5 °C); a real thermal swing changes shape instead.

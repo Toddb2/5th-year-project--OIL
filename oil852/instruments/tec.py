@@ -86,22 +86,40 @@ class _TECBase:
                            "TEC output disabled. Check the TEC wiring (TEC+ and TEC- swapped?) and the heatsink.")
 
     def wait_until_stable(self, target_C: float, tol_C: float = 0.05, hold_s: float = 30.0,
-                          timeout_s: float = 900.0, diverge_s: float = 120.0, poll_s: float = 1.0) -> float:
+                          timeout_s: float = 900.0, diverge_s: float = 120.0, poll_s: float = 1.0,
+                          average_s: float = 0.0) -> float:
         """Wait until the reading stays within tol_C of target for hold_s.
+
+        With average_s > 0 the test uses the mean of the last average_s seconds instead of each
+        reading, for a loop that cycles about the right temperature (the bench TTC001 in Nov 2026).
+        The swing over that window is kept in self.last_swing_C.
 
         Overshoot is normal after a change, so the runaway check only trips if the error has kept
         growing for diverge_s (TEC+ and TEC- swapped), or the temperature leaves the safe range.
         """
         t0 = time.time()
         hist: list[tuple[float, float]] = []
+        window: list[tuple[float, float]] = []
         stable_since = None
         last_print = 0.0
+        self.last_swing_C = None
+        if average_s > 0:
+            poll_s = min(poll_s, 0.25)
         while True:
-            T = self.read_C()
-            err = abs(T - target_C)
+            T_now = self.read_C()
             now = time.time()
-            self._check_bounds(T)
-            hist.append((now, err))
+            self._check_bounds(T_now)
+            if average_s > 0:
+                window.append((now, T_now))
+                window = [w for w in window if w[0] >= now - average_s]
+                vals = [w[1] for w in window]
+                T = sum(vals) / len(vals)
+                self.last_swing_C = max(vals) - min(vals)
+                err = abs(T - target_C) if now - t0 >= average_s else float("inf")
+            else:
+                T = T_now
+                err = abs(T - target_C)
+            hist.append((now, abs(T_now - target_C)))
             hist = [h for h in hist if h[0] >= now - diverge_s]
             if now - t0 >= diverge_s and len(hist) > 3:
                 errs = [e for _, e in hist]
@@ -113,7 +131,8 @@ class _TECBase:
             if err <= tol_C:
                 stable_since = stable_since or now
                 if now - stable_since >= hold_s:
-                    print(f"\r  TEC stable at {T:.3f} C (target {target_C:g} C)                        ")
+                    sw = f", {average_s:g} s mean, swinging {self.last_swing_C:.2f} C" if average_s > 0 else ""
+                    print(f"\r  TEC stable at {T:.3f} C (target {target_C:g} C{sw})                        ")
                     return T
             else:
                 stable_since = None
@@ -123,12 +142,13 @@ class _TECBase:
                                "if it never gets there, check the current limit and the heatsink.")
             if now - last_print > 2:
                 held = f", holding {now - stable_since:4.0f}/{hold_s:g} s" if stable_since else ""
-                print(f"\r  TEC {T:7.3f} C -> {target_C:g} C{self._current_str()}{held}      ", end="", flush=True)
+                mean = f" (mean, swing {self.last_swing_C:.2f})" if average_s > 0 else ""
+                print(f"\r  TEC {T:7.3f} C{mean} -> {target_C:g} C{self._current_str()}{held}      ", end="", flush=True)
                 last_print = now
             time.sleep(poll_s)
 
     def go_to(self, temp_C: float, tol_C: float = 0.05, hold_s: float = 30.0, timeout_s: float = 900.0,
-              ramp_C_per_min: float | None = 3.0) -> float:
+              ramp_C_per_min: float | None = 3.0, average_s: float = 0.0) -> float:
         """Move the set point gradually (less overshoot and integral wind-up), then wait to settle."""
         self.check_range(temp_C)
         if ramp_C_per_min:
@@ -149,7 +169,7 @@ class _TECBase:
         self.set_C(temp_C)
         if not self.is_enabled():
             self.enable()
-        return self.wait_until_stable(temp_C, tol_C, hold_s, timeout_s)
+        return self.wait_until_stable(temp_C, tol_C, hold_s, timeout_s, average_s=average_s)
 
 
 class TTC001(_TECBase):
@@ -426,12 +446,14 @@ class SimTEC(_TECBase):
     def current_limit_A(self):
         return 0.5
 
-    def go_to(self, temp_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, ramp_C_per_min=None):
-        return super().go_to(temp_C, tol_C, min(hold_s, 0.3), timeout_s, ramp_C_per_min=None)
+    def go_to(self, temp_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, ramp_C_per_min=None, average_s=0.0):
+        return super().go_to(temp_C, tol_C, min(hold_s, 0.3), timeout_s, ramp_C_per_min=None,
+                             average_s=min(average_s, 0.3))
 
-    def wait_until_stable(self, target_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, diverge_s=120.0, poll_s=1.0):
+    def wait_until_stable(self, target_C, tol_C=0.05, hold_s=30.0, timeout_s=900.0, diverge_s=120.0, poll_s=1.0,
+                          average_s=0.0):
         return super().wait_until_stable(target_C, tol_C, min(hold_s, 0.3), timeout_s, min(diverge_s, 2.0),
-                                         poll_s=0.05)
+                                         poll_s=0.05, average_s=min(average_s, 0.3))
 
 
 def open_tec(cfg: dict, mode: str):

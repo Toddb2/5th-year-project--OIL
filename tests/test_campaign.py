@@ -176,3 +176,16 @@ def test_tec_wavelength_check_spots_pickup(tmp_path):
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     res = json.loads(next(tmp_path.rglob("*tec_wavelength*/summary.json")).read_text())
     assert res["verdict"].startswith("READING PICKUP") and res["ratio"] < 0.35
+
+
+def test_mean_settling_accepts_a_loop_cycling_about_the_target():
+    import math
+
+    class Cycling(SimTEC):
+        def read_C(self):
+            return self._set + 1.8 * math.sin(2 * math.pi * time.time() / 0.1)
+    tec = Cycling(tau_s=0.05)
+    with pytest.raises(TECError):  # strict settling never manages it
+        tec.go_to(25.0, tol_C=0.05, hold_s=0.1, timeout_s=1.5)
+    T = tec.go_to(25.0, tol_C=0.2, hold_s=0.1, timeout_s=10, average_s=0.3)
+    assert T == pytest.approx(25.0, abs=0.2) and tec.last_swing_C > 0.5  # sampled coarsely in sim

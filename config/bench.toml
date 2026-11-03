@@ -31,6 +31,13 @@ tolerance_C = 0.05
 hold_s = 30.0
 timeout_s = 900.0
 ramp_C_per_min = 3.0
+# "strict": every reading within tolerance_C for hold_s (the normal setting).
+# "mean": the mean over mean_window_s within mean_tolerance_C for hold_s. Temporary, for stage 1 while
+# the TTC001 reading cycles ~3.7 C about the target (3 Nov 2026). Data taken this way is provisional:
+# set back to "strict" once the TEC holds.
+settle = "mean"
+mean_window_s = 20.0
+mean_tolerance_C = 0.2
 
 [voa]
 # Who sets the VOA control voltage: "manual" (you, when asked), "awg" (AWG channel in DC mode)
@@ -46,7 +53,7 @@ on_cmd = "OUTPut{ch}:STATe ON"
 
 [power_meter]
 # Leave blank to auto-detect the first Thorlabs PM100-series meter on USB
-resource = ""
+resource = "USB0::0x1313::0x8078::P0022425::INSTR"
 # Maximum power the sensor head can take, in mW (S120C = 50 mW, S121C = 500 mW, S154C = 3 mW).
 # The sweep stops if a reading passes 90 % of this. Known Thorlabs heads are recognised automatically
 # and the lower of the two limits is used.
