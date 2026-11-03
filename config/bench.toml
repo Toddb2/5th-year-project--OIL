@@ -73,7 +73,7 @@ average_count = 50
 [spectrometer]
 # Wavelength readings for the tuning steps: "manual" (you type them off an OSA or wavemeter) or
 # "ccs" (Thorlabs CCS175/M on USB, read automatically; needs ThorSpectra installed and closed).
-control = "manual"
+control = "ccs"
 # Blank resource = auto-detect the first USB0::0x1313::...::RAW device; serial narrows it down.
 resource = ""
 serial = "M00766231"

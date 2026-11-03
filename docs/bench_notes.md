@@ -123,6 +123,17 @@ The TEC heats and cools (wiring and polarity fine), but the loop is in a limit c
 - First `tec_wavelength_check.py` (15:53) ran with the fibre still on the power meter: only 5 readings (the CCS kept lengthening its exposure looking for light) and no usable wavelength. **But the thermistor read 32.3 °C with the TEC at full cooling (−490 mA), set point 25 °C, laser at 150 mA.** Even allowing ~1.7 °C of pickup, the laser was ~30 °C and the TEC couldn't pull it down. Suspect the laser/PCB came off its heatsink during the pin checks. The script now stops on > set point + 5 °C, and the CCS exposure is capped at 0.5 s with a clear "no light" error.
 - PM100D still not found by Python (`VI_ERROR_RSRC_NFOUND` at its known address) while NI VISA Interactive Control lists it. Started after ThorSpectra was installed, so pyvisa may be using a different VISA library: `check_instruments.py` now prints which, and `[power_meter] visa_library` can point it at NI's.
 
+- **16:10, what the TEC is actually doing.** After the 150 mA run, with the laser off, the TTC001 still sat at **28.8 °C at full cooling (−490 mA)**. Switching the TEC **off** (diagnostic phase A) dropped it to 23.4 °C at −2 °C/min. So steady "cooling" left the laser *hotter* than no TEC at all. The diagnostic again cycled ~3.8 °C at ~2 s in B, C and D.
+  - **Explanation that fits everything so far.** The reading carries an offset of about −3.5 °C per amp of TEC current (cooling at −0.49 A reads ~1.7 °C hot; heating reads ~1.7 °C cold). The loop then behaves as a relay with ~3.4 °C of hysteresis: once it cools, the reading jumps up, so it keeps cooling; once it heats, the reading jumps down, so it keeps heating. That gives the 3.4–3.8 °C jumps at every current reversal, and gains make no difference (seen in `tec_tune.py`).
+  - **Why it latched hot.** With the base not heatsinked, full cooling dumps ~0.4 W of TEC heat plus the laser's heat into the mount. The true temperature stays near 27 °C (30 °C with the laser on). That never gets below set − 1.7 °C, so the current never flips back.
+  - **Workaround until the new PCBs:**
+    - In Kinesis, lower the TTC001 current limit from 500 to **200 mA** (Current and Startup tabs, Save). The pickup offset scales with current, so it shrinks to ~0.7 °C, and the unsinked base gets less heat.
+    - Use set points above room temperature so the TEC mostly heats. `config/campaign.toml` now uses **25, 28, 31 °C**.
+    - Keep `[tec] settle = "mean"`.
+- Spectrometer straight on the fibre (no attenuation) saturates even at its 10 µs minimum exposure, as expected at 15 mW.
+- The VOAs are on a piezo controller, not the AWG. Model numbers still to note. **Check the VOA's maximum control voltage before driving it from a piezo controller**: those output up to 75–150 V.
+- Scripts run with VS Code's Run button (Code Runner) get no arguments and can't take typed input. Run them from the terminal.
+
 #### If the reading is pickup
 
 1. **Does it scale with TEC current?** In Kinesis lower the TTC001 current limit from 500 to 200 mA (Current and Startup tabs, Save) and re-run `tec_wavelength_check.py`. Electrical pickup shrinks in proportion (~3.7 → ~1.5 °C); a real thermal swing changes shape instead.

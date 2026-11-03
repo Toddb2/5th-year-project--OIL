@@ -22,8 +22,11 @@ on_error = "ask"
 
 [characterisation]
 laser = "DBR852PN"
-# L-I-V at each temperature, then threshold vs temperature and T0
-temperatures_C = [20.0, 25.0, 30.0]
+# L-I-V at each temperature, then threshold vs temperature and T0.
+# Until the new PCBs give the laser a proper heatsink, the TEC can only reliably HEAT: holding below
+# room temperature (~22 C) needs steady cooling current, which heats the unsinked base and latches the
+# reading high (3 Nov 2026). So all set points sit above room temperature. Back to [20, 25, 30] later.
+temperatures_C = [25.0, 28.0, 31.0]
 stop_mA = 200.0
 settle_s = 0.5
 zero_meter = true           # zero the power meter before the first sweep (laser off)
@@ -32,9 +35,10 @@ stability = true
 stability_temp_C = 25.0
 stability_current_mA = 150.0
 stability_minutes = 10.0
-# Wavelength tuning (you read the peak off the OSA at each current). Set to false to skip.
+# Wavelength tuning: read off the CCS automatically ([spectrometer] control = "ccs" in bench.toml),
+# or typed in from an OSA. Set to false to skip.
 tuning = true
-tuning_temperatures_C = [20.0, 25.0, 30.0]
+tuning_temperatures_C = [25.0, 28.0, 31.0]
 tuning_currents = "60:200:10"
 
 [locking]

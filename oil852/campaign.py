@@ -168,6 +168,13 @@ class Campaign:
         avg = float(tcfg.get("mean_window_s", 20.0)) if mean_mode else 0.0
         if mean_mode:
             self.log(f"  (settling on the {avg:g} s mean to within {tol:g} C: [tec] settle = \"mean\")")
+            try:
+                lim = self._tec.current_limit_A()
+                if not self.sim and lim > 0.25:
+                    self.log(f"  ! TTC001 current limit is {lim * 1000:.0f} mA. With the reading offset of ~3.5 C/A, "
+                             "200 mA keeps the swing small (set it in Kinesis, Current and Startup tabs, Save).")
+            except Exception:
+                pass
         try:
             T = self._tec.go_to(temp_C, tol, float(tcfg.get("hold_s", 30)), float(tcfg.get("timeout_s", 900)),
                                 ramp_C_per_min=float(tcfg.get("ramp_C_per_min", 3.0)), average_s=avg)
