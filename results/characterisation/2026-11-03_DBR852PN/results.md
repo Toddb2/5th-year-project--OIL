@@ -1,6 +1,6 @@
 # DBR852PN characterisation results
 
-Made 03 Nov 2026 14:53 from 1 L–I–V run(s). Reference temperature 25 °C.
+Made 03 Nov 2026 14:56 from 1 L–I–V run(s). Reference temperature 25 °C.
 
 | Quantity | Spec sheet | Measured |
 |---|---|---|
@@ -13,6 +13,7 @@ Made 03 Nov 2026 14:53 from 1 L–I–V run(s). Reference temperature 25 °C.
 | Temperature tuning | ~0.06 nm/°C | not measured |
 | Monitor photodiode | – | not read |
 | Power stability | – | 0.263 % rms, 1.80 % peak-to-peak over 5 min |
+| Stability after the first minute | – | 0.159 % rms, 0.69 % peak-to-peak, strongest ripple every 2.0 s; warm-up drift +0.87 % |
 
 ## Per temperature
 
@@ -25,7 +26,6 @@ Made 03 Nov 2026 14:53 from 1 L–I–V run(s). Reference temperature 25 °C.
 - `fig_LI.png` / `fig_LI.pdf`
 - `fig_dPdI.png` / `fig_dPdI.pdf`
 - `fig_IV.png` / `fig_IV.pdf`
-- `fig_monitor_PD.png` / `fig_monitor_PD.pdf`
 - `fig_stability.png` / `fig_stability.pdf`
 
 Data runs used:

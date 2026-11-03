@@ -195,8 +195,9 @@ def fig_threshold_t(curves, out, made):
 
 def fig_monitor_pd(curves, ref, out, made):
     df, res, *_ = curves[ref]
-    if "pd_mA" not in df or df["pd_mA"].notna().sum() < 4 or res.pd_responsivity_mA_per_mW is None:
-        return
+    if ("pd_mA" not in df or df["pd_mA"].notna().sum() < 4 or not res.pd_responsivity_mA_per_mW
+            or df["pd_mA"].abs().max() == 0):
+        return  # photodiode not read (all zeros means it isn't connected)
     d = df.dropna(subset=["pd_mA"])
     fig, ax = plt.subplots(figsize=(5.5, 3.8))
     ax.plot(d["power_mW"], d["pd_mA"] * 1000, "o", ms=2.5, color="#1f4e8c")
@@ -228,8 +229,22 @@ def fig_stability(run: Path, out, made):
     ax2.set_xlabel("Time (min)")
     ax2.set_ylabel("Deviation from mean (%)")
     _save(fig, out, "fig_stability", made)
-    return {"mean_mW": float(P.mean()), "std_pct": float(P.std() / P.mean() * 100),
-            "peak_to_peak_pct": float((P.max() - P.min()) / P.mean() * 100), "minutes": float(t.max())}
+    out = {"mean_mW": float(P.mean()), "std_pct": float(P.std() / P.mean() * 100),
+           "peak_to_peak_pct": float((P.max() - P.min()) / P.mean() * 100), "minutes": float(t.max())}
+    if t.max() > 2:  # after warm-up (first minute dropped), and the strongest ripple period
+        w = P[t >= 1]
+        out.update({"settled_std_pct": float(w.std() / w.mean() * 100),
+                    "settled_p2p_pct": float((w.max() - w.min()) / w.mean() * 100),
+                    "warmup_drift_pct": float((P[t < 0.25].mean() / w.mean() - 1) * 100)})
+        ts = df["elapsed_s"].to_numpy(float)[t.to_numpy() >= 1]
+        dt = float(np.median(np.diff(ts)))
+        u = np.interp(np.arange(ts[0], ts[-1], dt), ts, w.to_numpy(float))
+        spec = np.abs(np.fft.rfft(u - u.mean()))
+        f = np.fft.rfftfreq(len(u), dt)
+        k = int(np.argmax(spec[2:]) + 2) if len(spec) > 3 else None
+        if k:
+            out["ripple_period_s"] = float(1 / f[k])
+    return out
 
 
 def fig_tuning(csv: Path, out, made):
@@ -343,6 +358,10 @@ def main():
              f"| Monitor photodiode | – | {r.pd_responsivity_mA_per_mW * 1000:.1f} µA/mW |" if r.pd_responsivity_mA_per_mW else "| Monitor photodiode | – | not read |"]
     if stab_res:
         lines.append(f"| Power stability | – | {stab_res['std_pct']:.3f} % rms, {stab_res['peak_to_peak_pct']:.2f} % peak-to-peak over {stab_res['minutes']:.0f} min |")
+        if "settled_std_pct" in stab_res:
+            rp = f", strongest ripple every {stab_res['ripple_period_s']:.1f} s" if stab_res.get("ripple_period_s") else ""
+            lines.append(f"| Stability after the first minute | – | {stab_res['settled_std_pct']:.3f} % rms, "
+                         f"{stab_res['settled_p2p_pct']:.2f} % peak-to-peak{rp}; warm-up drift {stab_res['warmup_drift_pct']:+.2f} % |")
     t2 = table.drop(columns=["run"]).fillna("")
     lines += ["", "## Per temperature", "", "| " + " | ".join(t2.columns) + " |", "|" + "---|" * len(t2.columns)]
     lines += ["| " + " | ".join(str(v) for v in row) + " |" for row in t2.itertuples(index=False)] + [""]

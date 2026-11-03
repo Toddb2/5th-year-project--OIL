@@ -104,6 +104,14 @@ Pinouts used:
 
 The TEC heats and cools (wiring and polarity fine), but the loop is in a limit cycle: the current flips between ±490 mA every second or so. The TEC cold plate is small, so it can swing that fast. Fix: lower gains. `01_characterisation/tec_tune.py` reads the gains actually on the TTC001, tries gentler sets after a 1 °C step, keeps the best, and prints it for Kinesis (Current **and** Startup tabs, then Save).
 
+### 3 Nov 2026: tuning, first stage 1 results, and what the logs show
+
+- `tec_tune.py`: every gain set from P 15/I 4/D 60 down to P 1/I 0.5/D 0 swung the same ~3.7 °C, current pinned near ±490 mA. Gains make no difference, so it isn't a tuning problem.
+- `tune_log.csv` (4 readings a second): the reading **jumps 2.4 °C in a single 0.25 s sample, exactly when the TEC current changes sign**, cycling 25.4 → 26.4 → 24.0 → 23.0 °C in step with the current (−420, −490, +410, +490 mA). A real temperature can't move that fast. **The TEC current is getting into the thermistor reading**: about −3.5 °C per amp, which is roughly 0.3 Ω shared between the thermistor return and the TEC current path (solder bridge, link, or a shared ground/wire on the PCB). The false reading drives the current into a bang-bang cycle.
+- The laser itself does follow the cycle a little: in the 150 mA stability run the strongest power ripple is at exactly **2.0 s**, about 0.7 % peak-to-peak after warm-up, so ~1 °C of real swing rather than the 3.7 °C reported.
+- **Fix:** with everything unplugged, thermistor pins 3/4 must be open circuit to TEC pins 5/13 at every stage (TTC001 end, chip plug, PCB). Give the thermistor its own two wires all the way back.
+- **First stage 1 results (25 °C, TEC still cycling):** threshold **41.0 mA** (fit) / 42.0 mA (kink), slope **0.126 W/A**, **20.0 mW at 200 mA**, R_s **2.93 Ω**, V_0 1.16 V, peak wall-plug efficiency 5.8 %. Stability 0.16 % rms after the first minute, warm-up drift +0.9 % over the first ~40 s. Results in `results/characterisation/2026-11-03_DBR852PN/`. Repeat once the TEC holds.
+
 ## FP slave (FPL852P) before the 1 A driver
 
 Spec: threshold 240–300 mA, 0.51 W/A, 280–320 mW at 900–1000 mA, 14-pin butterfly Type 1 (same pinout as the DBR, so the same cables), 10 kΩ thermistor, monitor PD, PM fibre FC/APC. On the 230 mA KLD101 it stays below threshold: I–V, spontaneous emission and the FP mode comb only (`01_characterisation/fp_subthreshold.py`). Its `max_current_mA` in `config/bench.toml` is 0 (blocked) until Todd sets it to 200 by hand for this.
