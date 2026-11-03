@@ -134,3 +134,14 @@ def test_fp_subthreshold_demo(tmp_path):
     run = res["runs"][0]
     assert run["lasing_onset_mA"] is None  # all below threshold
     assert run["iv"]["series_resistance_ohm"] == pytest.approx(1.2, abs=0.2)
+
+
+def test_tec_tune_picks_gains_that_settle(tmp_path):
+    env = dict(os.environ, OIL852_DATA_ROOT=str(tmp_path), OIL852_NO_GIT="1", MPLBACKEND="Agg")
+    r = subprocess.run([sys.executable, str(ROOT / "01_characterisation" / "tec_tune.py"), "--mode", "sim"],
+                       env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    res = json.loads(next(tmp_path.rglob("TTC001_tec_tune_*/results.json")).read_text())
+    first = res["results"][0]
+    assert not first["settled"] and first["swing_last_min_C"] > 1  # the bench's original gains ring
+    assert res["best"]["settled"] and res["best"]["P"] < first["P"]

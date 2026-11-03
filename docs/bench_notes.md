@@ -93,6 +93,17 @@ Pinouts used:
 - TEC oscillating between ~23 and ~27 °C with the current pinned at ±490 mA: the loop gains (P 15, I 4, D 60) were too high for this mount. Lowered (P ~5, I ~1) on both the Current and Startup tabs and saved to the device; check it settles.
 - After the TEC works: `check_instruments.py`, then a first sweep with `li_sweep.py --temp 25 --stop 80 --zero`, then `run_experiment.py --stages characterisation`.
 
+### 3 Nov 2026: TEC diagnostic
+
+| Phase | Result |
+|---|---|
+| A TEC off | 21.28 °C, no drift |
+| B heat (set 24.28) | rose 2.16 °C, but mean current ≈ 0 mA and 1.9 °C swing |
+| C cool (set 22.91) | fell 2.38 °C, 3.8 °C swing |
+| D hold 25 °C | **oscillating 3.8 °C peak-to-peak, period ~2 s** |
+
+The TEC heats and cools (wiring and polarity fine), but the loop is in a limit cycle: the current flips between ±490 mA every second or so. The TEC cold plate is small, so it can swing that fast. Fix: lower gains. `01_characterisation/tec_tune.py` reads the gains actually on the TTC001, tries gentler sets after a 1 °C step, keeps the best, and prints it for Kinesis (Current **and** Startup tabs, then Save).
+
 ## FP slave (FPL852P) before the 1 A driver
 
 Spec: threshold 240–300 mA, 0.51 W/A, 280–320 mW at 900–1000 mA, 14-pin butterfly Type 1 (same pinout as the DBR, so the same cables), 10 kΩ thermistor, monitor PD, PM fibre FC/APC. On the 230 mA KLD101 it stays below threshold: I–V, spontaneous emission and the FP mode comb only (`01_characterisation/fp_subthreshold.py`). Its `max_current_mA` in `config/bench.toml` is 0 (blocked) until Todd sets it to 200 by hand for this.

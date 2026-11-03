@@ -108,6 +108,11 @@ def verdicts(s, setpoints):
                 out["C"] = "REVERSED: cooling current made it hotter. Swap TEC+ and TEC-."
         else:
             out["C"] = "weak cooling: poor heatsinking or current limit too low"
+    for ph in ("B", "C"):
+        x = s.get(ph)
+        if x and ph in out and x["tail_p2p_C"] >= 0.5:
+            out[ph] += (f" - but swinging {x['tail_p2p_C']:.1f} C peak-to-peak (mean current {x['I_mean_mA'] or 0:+.0f} mA "
+                        "means it flips between heating and cooling): the loop gains are too high")
     d = s.get("D")
     if d:
         err = abs(d["T_end"] - setpoints["D"])

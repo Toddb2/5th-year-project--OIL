@@ -31,6 +31,13 @@ class TECError(RuntimeError):
     pass
 
 
+class _LoopParams(ctypes.Structure):
+    """TC_LoopParameters from Thorlabs.MotionControl.TCube.TEC.h (packed, three WORDs)."""
+    _pack_ = 1
+    _fields_ = [("proportionalGain", ctypes.c_ushort), ("integralGain", ctypes.c_ushort),
+                ("differentialGain", ctypes.c_ushort)]
+
+
 class _TECBase:
     """Shared temperature conversion, limits and the settle/runaway check."""
 
@@ -192,6 +199,16 @@ class TTC001(_TECBase):
         if hasattr(L, "TC_RequestReadings"):
             L.TC_RequestReadings.argtypes = [c]
             L.TC_RequestReadings.restype = ctypes.c_short
+        for name in ("TC_GetTempLoopParams", "TC_SetTempLoopParams"):
+            if hasattr(L, name):
+                getattr(L, name).argtypes = [c, ctypes.POINTER(_LoopParams)]
+                getattr(L, name).restype = ctypes.c_short
+        if hasattr(L, "TC_RequestTempLoopParams"):
+            L.TC_RequestTempLoopParams.argtypes = [c]
+            L.TC_RequestTempLoopParams.restype = ctypes.c_short
+        if hasattr(L, "TC_PersistSettings"):
+            L.TC_PersistSettings.argtypes = [c]
+            L.TC_PersistSettings.restype = ctypes.c_bool
 
     def connect(self):
         if self._lib.TLI_BuildDeviceList() != 0:
@@ -263,6 +280,44 @@ class TTC001(_TECBase):
 
     def tec_current_A(self) -> float:
         return int(self._lib.TC_GetCurrentReading(self.serial)) / 1000.0
+
+    # ---- loop gains (P, I, D) -------------------------------------------------------
+    # The header says 1..32767 = 1..100, but other users report the raw values match the Kinesis
+    # panel (e.g. P 15). The units are worked out from the first read: raw values above 100 must
+    # be counts. Everything here is in Kinesis-panel units.
+    def loop_gains_raw(self) -> tuple[int, int, int]:
+        if not hasattr(self._lib, "TC_GetTempLoopParams"):
+            raise TECError("This Kinesis version has no TC_GetTempLoopParams; set the gains in Kinesis.")
+        if hasattr(self._lib, "TC_RequestTempLoopParams"):
+            self._lib.TC_RequestTempLoopParams(self.serial)
+            time.sleep(0.4)
+        lp = _LoopParams()
+        code = self._lib.TC_GetTempLoopParams(self.serial, ctypes.byref(lp))
+        if code != 0:
+            raise TECError(f"TC_GetTempLoopParams failed with Kinesis error code {code}")
+        return int(lp.proportionalGain), int(lp.integralGain), int(lp.differentialGain)
+
+    def _gain_scale(self) -> float:
+        if getattr(self, "_scale", None) is None:
+            raw = self.loop_gains_raw()
+            self._scale = 32767 / 100 if max(raw) > 100 else 1.0
+        return self._scale
+
+    def loop_gains(self) -> tuple[float, float, float]:
+        sc = self._gain_scale()
+        return tuple(round(v / sc, 2) for v in self.loop_gains_raw())
+
+    def set_loop_gains(self, p: float, i: float, d: float):
+        if not (1 <= p <= 100 and 0 <= i <= 100 and 0 <= d <= 100):
+            raise TECError("Gains out of range (P 1-100, I 0-100, D 0-100)")
+        sc = self._gain_scale()
+        lp = _LoopParams(int(round(p * sc)), int(round(i * sc)), int(round(d * sc)))
+        code = self._lib.TC_SetTempLoopParams(self.serial, ctypes.byref(lp))
+        if code != 0:
+            raise TECError(f"TC_SetTempLoopParams failed with Kinesis error code {code}")
+
+    def persist(self) -> bool:
+        return bool(self._lib.TC_PersistSettings(self.serial)) if hasattr(self._lib, "TC_PersistSettings") else False
 
     def is_enabled(self) -> bool:
         return bool(self._enabled)
