@@ -150,9 +150,15 @@ def main():
         now = a.current
         print("Setting the spectrometer exposure...")
         auto_scan(ccs, n_avg=1)  # sets the integration time once; fixed for the run
+        print(f"  exposure {ccs.integration_s * 1e3:.3g} ms")
         if not sim:
             print("Letting the laser warm up for 20 s...")
-            time.sleep(20)
+            for _ in range(20):
+                T = tec.read_C()
+                if T > tec.max_C or T > a.temp + 5:
+                    raise TECError(f"Thermistor at {T:.2f} C during warm-up. Laser switched off. "
+                                   "Check the laser is clamped to its heatsink.")
+                time.sleep(1)
         t0 = time.time()
         while time.time() - t0 < a.seconds:
             T = tec.read_C()
@@ -167,6 +173,10 @@ def main():
                   end="", flush=True)
             if top > 0.98:
                 print("\n  (spectrum saturating: add attenuation)")
+            if T > tec.max_C or T > a.temp + 5:
+                raise TECError(f"Thermistor at {T:.2f} C, {T - a.temp:+.1f} C from the {a.temp:g} C set point "
+                               f"(TEC {I:+.0f} mA). Laser switched off. If the TEC is at full cooling, it can't dump "
+                               "the heat: check the laser is clamped to its heatsink.")
             if sim:
                 time.sleep(0.01)
         print()

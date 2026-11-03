@@ -72,7 +72,8 @@ def main():
     meter = None
     if a.mode == "auto":
         from oil852.instruments.pm100 import PM100
-        meter = PM100(cfg["power_meter"].get("resource", ""), 852.0, int(cfg["power_meter"].get("average_count", 50)))
+        meter = PM100(cfg["power_meter"].get("resource", ""), 852.0, int(cfg["power_meter"].get("average_count", 50)),
+                      cfg["power_meter"].get("visa_library", ""))
 
     driver, now = None, 0.0
     if a.drive_master and a.mode == "auto":

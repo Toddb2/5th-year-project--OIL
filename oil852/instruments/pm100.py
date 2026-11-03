@@ -17,10 +17,11 @@ class PM100Error(RuntimeError):
 
 
 class PM100:
-    def __init__(self, resource: str = "", wavelength_nm: float = 852.0, average_count: int = 50):
+    def __init__(self, resource: str = "", wavelength_nm: float = 852.0, average_count: int = 50,
+                 visa_library: str = ""):
         import pyvisa  # imported here so --sim runs without pyvisa installed
 
-        self._rm = pyvisa.ResourceManager()
+        self._rm = pyvisa.ResourceManager(visa_library) if visa_library else pyvisa.ResourceManager()
         if not resource:
             listed = set(self._rm.list_resources())
             try:  # some VISA set-ups only list USB meters with an explicit USB query

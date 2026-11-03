@@ -65,7 +65,8 @@ def open_instruments(cfg: dict, mode: str, wavelength_nm: float = 852.0, sim_tem
                                                                     pcfg.get("attenuation_dB", 0.0))
 
     from .instruments.pm100 import PM100
-    meter = AttenuatedMeter(PM100(pcfg.get("resource", ""), wavelength_nm, int(pcfg.get("average_count", 50))),
+    meter = AttenuatedMeter(PM100(pcfg.get("resource", ""), wavelength_nm, int(pcfg.get("average_count", 50)),
+                                    pcfg.get("visa_library", "")),
                             pcfg.get("attenuation_dB", 0.0))
     if mode == "manual-driver":
         from .instruments.manual import ManualDriver

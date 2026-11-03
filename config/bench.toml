@@ -54,6 +54,10 @@ on_cmd = "OUTPut{ch}:STATe ON"
 [power_meter]
 # Leave blank to auto-detect the first Thorlabs PM100-series meter on USB
 resource = "USB0::0x1313::0x8078::P0022425::INSTR"
+# VISA library for pyvisa. Blank = Windows default. If check_instruments.py can't find a meter that
+# NI VISA Interactive Control can see, another vendor's VISA has taken over: set this to NI's,
+# 'C:\Windows\System32\nivisa64.dll' (check the file exists).
+visa_library = ""
 # Maximum power the sensor head can take, in mW (S120C = 50 mW, S121C = 500 mW, S154C = 3 mW).
 # The sweep stops if a reading passes 90 % of this. Known Thorlabs heads are recognised automatically
 # and the lower of the two limits is used.

@@ -120,6 +120,9 @@ The TEC heats and cools (wiring and polarity fine), but the loop is in a limit c
 - `check_instruments.py` found the CCS but not the PM100D, although NI VISA Interactive Control listed both. `[power_meter] resource` is now set to `USB0::0x1313::0x8078::P0022425::INSTR` so the meter is opened directly, and auto-detect also tries an explicit USB query.
 - **Stage 1 while the TEC cycles:** `[tec] settle = "mean"` in `config/bench.toml` waits for the 20 s mean of the reading to sit within 0.2 °C of the target instead of every reading within 0.05 °C. The runner logs the swing at each temperature. Results taken this way are **provisional**; set `settle = "strict"` and repeat once the TEC holds. How much the laser itself swings comes from `tec_wavelength_check.py`.
 
+- First `tec_wavelength_check.py` (15:53) ran with the fibre still on the power meter: only 5 readings (the CCS kept lengthening its exposure looking for light) and no usable wavelength. **But the thermistor read 32.3 °C with the TEC at full cooling (−490 mA), set point 25 °C, laser at 150 mA.** Even allowing ~1.7 °C of pickup, the laser was ~30 °C and the TEC couldn't pull it down. Suspect the laser/PCB came off its heatsink during the pin checks. The script now stops on > set point + 5 °C, and the CCS exposure is capped at 0.5 s with a clear "no light" error.
+- PM100D still not found by Python (`VI_ERROR_RSRC_NFOUND` at its known address) while NI VISA Interactive Control lists it. Started after ThorSpectra was installed, so pyvisa may be using a different VISA library: `check_instruments.py` now prints which, and `[power_meter] visa_library` can point it at NI's.
+
 #### If the reading is pickup
 
 1. **Does it scale with TEC current?** In Kinesis lower the TTC001 current limit from 500 to 200 mA (Current and Startup tabs, Save) and re-run `tec_wavelength_check.py`. Electrical pickup shrinks in proportion (~3.7 → ~1.5 °C); a real thermal swing changes shape instead.

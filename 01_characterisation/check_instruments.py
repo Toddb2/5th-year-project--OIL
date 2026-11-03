@@ -26,11 +26,14 @@ from oil852.config import load_config
 def check_meter(cfg):
     import pyvisa
 
-    rm = pyvisa.ResourceManager()
-    print("VISA resources:", rm.list_resources() or "none")
+    lib = cfg["power_meter"].get("visa_library", "")
+    rm = pyvisa.ResourceManager(lib) if lib else pyvisa.ResourceManager()
+    print(f"VISA library: {rm.visalib}")
+    print("VISA resources:", rm.list_resources("?*") or "none")
+    rm.close()
     from oil852.instruments.pm100 import PM100
 
-    m = PM100(cfg["power_meter"].get("resource", ""), 852.0, 10)
+    m = PM100(cfg["power_meter"].get("resource", ""), 852.0, 10, lib)
     print(f"Power meter: {m.idn}\n  resource {m.resource}\n  sensor   {m.sensor}\n  wavelength {m.wavelength_nm} nm")
     print(f"  reading now: {m.power_W() * 1e3:.4f} mW (laser should be off: this is the dark level)")
     m.close()

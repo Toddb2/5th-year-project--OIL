@@ -143,16 +143,19 @@ class SimCCS:
         pass
 
 
-def auto_scan(ccs, target=(0.3, 0.8), tries: int = 8, n_avg: int = 3):
+def auto_scan(ccs, target=(0.3, 0.8), tries: int = 8, n_avg: int = 3, max_integration_s: float = 0.5):
     """Adjust the integration time until the line sits between 30 % and 80 % of full scale, then
-    average n_avg scans. The CCS returns 0..1 (1 = saturated)."""
+    average n_avg scans. The CCS returns 0..1 (1 = saturated). A laser line through an attenuator
+    needs well under max_integration_s; needing more means no light is getting in."""
     y = ccs.scan()
     for _ in range(tries):
         top = float(np.max(y))
         if top >= 0.98:
             ccs.set_integration(ccs.integration_s / 4)
         elif top < target[0]:
-            ccs.set_integration(ccs.integration_s * min(10.0, 0.55 / max(top, 1e-3)))
+            if ccs.integration_s >= max_integration_s:
+                break
+            ccs.set_integration(min(max_integration_s, ccs.integration_s * min(10.0, 0.55 / max(top, 1e-3))))
         elif top > target[1]:
             ccs.set_integration(ccs.integration_s * 0.55 / top)
         else:
@@ -160,4 +163,7 @@ def auto_scan(ccs, target=(0.3, 0.8), tries: int = 8, n_avg: int = 3):
         y = ccs.scan()
     if np.max(y) >= 0.98:
         raise CCSError("Spectrometer saturated even at the shortest integration time: add attenuation.")
+    if np.max(y) - np.median(y) < 0.05:
+        raise CCSError(f"No laser line on the spectrometer even at {ccs.integration_s * 1e3:.0f} ms exposure "
+                       f"(max reading {np.max(y):.3f}). Is the fibre on the CCS input and the laser on?")
     return np.mean([y] + [ccs.scan() for _ in range(n_avg - 1)], axis=0)
