@@ -4,9 +4,10 @@
   python 01_characterisation/check_instruments.py --meter    # power meter only
   python 01_characterisation/check_instruments.py --driver   # KLD101 only
   python 01_characterisation/check_instruments.py --tec      # TTC001 only
+  python 01_characterisation/check_instruments.py --ccs      # CCS spectrometer only (takes one scan)
   python 01_characterisation/check_instruments.py --all      # also try the AWG and scope
 
-Close the Kinesis app and the Thorlabs power meter app first: each holds its USB connection.
+Close the Kinesis app, the Thorlabs power meter app and ThorSpectra first: each holds its USB connection.
 """
 
 from __future__ import annotations
@@ -83,6 +84,23 @@ def _report_tec(tec, cfg):
           f"TEC current {tec.tec_current_A() * 1000:.0f} mA, limit {tec.current_limit_A():.2f} A")
 
 
+def check_ccs(cfg):
+    import numpy as np
+
+    from oil852.instruments.ccs import CCS, peak_centre
+    sc = cfg.get("spectrometer", {})
+    ccs = CCS(sc.get("resource", ""), sc.get("serial", ""), float(sc.get("integration_s", 1e-3)))
+    try:
+        y = ccs.scan()
+        print(f"CCS: {ccs.idn}, {ccs.wavelengths[0]:.1f}-{ccs.wavelengths[-1]:.1f} nm, "
+              f"integration {ccs.integration_s * 1e3:g} ms, max reading {np.max(y):.3f} (1 = saturated)")
+        if np.max(y) - np.median(y) > 0.05:
+            lam, fwhm, _ = peak_centre(ccs.wavelengths, y)
+            print(f"     strongest line {lam:.2f} nm, FWHM {fwhm:.2f} nm")
+    finally:
+        ccs.close()
+
+
 def check_others(cfg):
     from oil852.instruments.awg import AWG5064
     from oil852.instruments.tek_scope import TekScope
@@ -102,15 +120,16 @@ def main():
     p.add_argument("--meter", action="store_true")
     p.add_argument("--driver", action="store_true")
     p.add_argument("--tec", action="store_true")
+    p.add_argument("--ccs", action="store_true", help="CCS spectrometer (not part of the default check)")
     p.add_argument("--all", action="store_true", help="also try the AWG and scope")
     p.add_argument("--config", default=None)
     a = p.parse_args()
     cfg = load_config(a.config)
-    every = not (a.meter or a.driver or a.tec)
+    every = not (a.meter or a.driver or a.tec or a.ccs)
     failed = False
     for flag, name, fn in ((a.meter, "Power meter", check_meter), (a.driver, "KLD101", check_driver),
-                           (a.tec, "TTC001", check_tec)):
-        if flag or every:
+                           (a.tec, "TTC001", check_tec), (a.ccs, "CCS", check_ccs)):
+        if flag or (every and name != "CCS"):
             try:
                 fn(cfg)
             except Exception as exc:

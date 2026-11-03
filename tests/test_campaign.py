@@ -145,3 +145,34 @@ def test_tec_tune_picks_gains_that_settle(tmp_path):
     first = res["results"][0]
     assert not first["settled"] and first["swing_last_min_C"] > 1  # the bench's original gains ring
     assert res["best"]["settled"] and res["best"]["P"] < first["P"]
+
+
+def test_ccs_peak_and_tuning_log(tmp_path):
+    import numpy as np
+
+    from oil852.instruments.ccs import N_PIXELS, auto_scan, peak_centre
+
+    wl = np.linspace(500, 1000, N_PIXELS)
+    y = 0.6 * np.exp(-0.5 * ((wl - 852.237) / 0.3) ** 2) + 0.002
+    centre, fwhm, _ = peak_centre(wl, y)
+    assert centre == pytest.approx(852.237, abs=0.01) and 0.5 < fwhm < 0.9
+
+    env = dict(os.environ, OIL852_DATA_ROOT=str(tmp_path), OIL852_NO_GIT="1", MPLBACKEND="Agg")
+    f = tmp_path / "tuning.csv"
+    r = subprocess.run([sys.executable, str(ROOT / "01_characterisation" / "wavelength_log.py"), "--temp", "25",
+                        "--currents", "60:200:20", "--file", str(f), "--mode", "sim", "--ccs", "--yes"],
+                       env=env, cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    res = json.loads((tmp_path / "tuning_results.json").read_text())
+    k = list(res["per_current"].values())[0] * 1000  # pm/mA
+    assert k == pytest.approx(2.0, rel=0.25)  # the sim laser tunes 2 pm/mA
+    assert len(list((tmp_path / "spectra_DBR852PN_25C").glob("*.csv"))) == 8
+
+
+def test_tec_wavelength_check_spots_pickup(tmp_path):
+    env = dict(os.environ, OIL852_DATA_ROOT=str(tmp_path), OIL852_NO_GIT="1", MPLBACKEND="Agg")
+    r = subprocess.run([sys.executable, str(ROOT / "01_characterisation" / "tec_wavelength_check.py"), "--mode", "sim"],
+                       env=env, cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    res = json.loads(next(tmp_path.rglob("*tec_wavelength*/summary.json")).read_text())
+    assert res["verdict"].startswith("READING PICKUP") and res["ratio"] < 0.35

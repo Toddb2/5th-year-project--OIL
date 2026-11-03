@@ -59,6 +59,16 @@ attenuation_dB = 0.0
 # Readings averaged per point
 average_count = 50
 
+[spectrometer]
+# Wavelength readings for the tuning steps: "manual" (you type them off an OSA or wavemeter) or
+# "ccs" (Thorlabs CCS175/M on USB, read automatically; needs ThorSpectra installed and closed).
+control = "manual"
+# Blank resource = auto-detect the first USB0::0x1313::...::RAW device; serial narrows it down.
+resource = ""
+serial = "M00766231"
+# Starting integration time in seconds; the scripts adjust it to keep the peak below saturation.
+integration_s = 0.001
+
 [lasers.DBR852PN]
 role = "master"
 # Never sweep above this. Spec sheet operating current is 300 mA, but the KLD101 stops at 230 mA.

@@ -32,7 +32,7 @@ limits stay in [`config/bench.toml`](../config/bench.toml).
 
 | Stage | Steps | Done by hand |
 |---|---|---|
-| 1 Characterisation | L–I–V at each temperature → threshold vs T and T0 → power stability → wavelength vs current at each temperature | Fibre to the power meter, later to the OSA; type each OSA peak wavelength |
+| 1 Characterisation | L–I–V at each temperature → threshold vs T and T0 → power stability → wavelength vs current at each temperature | Fibre to the power meter, later to the CCS spectrometer (read automatically with `[spectrometer] control = "ccs"`) or an OSA (type each peak) |
 | 2 Injection locking | VOA calibration → OSA spectra → a locking map for every slave current × VOA attenuation → comparison with theory | Build the injection path; set the slave driver; export OSA traces or type locked y/n |
 | 3 Pulsed | AWG double-pulse setup → check on the scope → pulse capture at each slave bias | Move cables to the bias tee; set each slave bias |
 | 4 QKD | COW/DPS patterns → load on the AWG → QBER and visibility from time tags → key rate vs fibre length using the measured visibility | Copy the files to the AWG stick; record and export the time tags |
@@ -79,6 +79,8 @@ python run_experiment.py --report data/campaigns/<folder>                    # r
 
 - **OSA.** It isn't controlled by the laptop yet, so you read the peak wavelength or export traces
   by hand. Give me the OSA model and it can be read over VISA like the power meter.
+- **CCS175 spectrometer.** Controlled through Thorlabs' TLCCS driver (install ThorSpectra, then close
+  it): `oil852/instruments/ccs.py`. Used for the stage 1 tuning steps.
 - **Slave driver.** It needs a driver that reaches at least 1 A, and that isn't on the bench yet.
   The runner asks you to set it.
 - **Time tagger.** You export detections as `channel,time_ps` CSV. The analysis takes it from there.

@@ -3,7 +3,13 @@ wavemeter, then fit the tuning coefficients and flag mode hops.
 
 Record (the script sets each current if the KLD101 is connected; you type the wavelength):
   python 01_characterisation/wavelength_log.py --temp 25 --currents 60:200:10 --file data/tuning_DBR852PN.csv
+With the Thorlabs CCS spectrometer on USB, add --ccs and the script reads the peak itself, saving each
+spectrum next to the CSV (spectra_<laser>_<T>C/<I>mA.csv). Install ThorSpectra and close it first.
+  python 01_characterisation/wavelength_log.py --temp 25 --currents 60:200:10 --file data/tuning_DBR852PN.csv --ccs
 Repeat at other temperatures with the same --file to build up the temperature dependence.
+
+The CCS175 (~0.6-1 nm resolution) finds a single line's centre to a few pm, which is what the tuning
+coefficients need. It cannot resolve FP modes or measure SMSR, so the smsr_dB column stays empty.
 
 Analyse only:
   python 01_characterisation/wavelength_log.py --analyse data/tuning_DBR852PN.csv
@@ -57,6 +63,8 @@ def main():
     add_common_args(p)
     p.add_argument("--currents", required=True, help='"start:stop:step" in mA')
     p.add_argument("--file", type=Path, required=True, help="CSV to append to")
+    p.add_argument("--ccs", action="store_true", help="read the peak from the Thorlabs CCS spectrometer")
+    p.add_argument("--settle-s", type=float, default=2.0, help="wait after each current step (CCS mode)")
     a = p.parse_args()
 
     cfg = load_config(a.config)
@@ -74,8 +82,21 @@ def main():
         driver = KLD101(d["serial"], d["kinesis_path"], d["full_scale_mA"], d.get("voltage_counts_per_V", 1000.0))
     driver.connect()
     Limits.build(cfg, spec, max(currents), driver.hardware_limit_mA())
+    ccs = None
+    if a.ccs:
+        from oil852.instruments.ccs import CCS, SimCCS
+        sc = cfg.get("spectrometer", {})
+        if a.mode == "sim":
+            ccs = SimCCS(driver.laser, driver)
+        else:
+            ccs = CCS(sc.get("resource", ""), sc.get("serial", ""), float(sc.get("integration_s", 1e-3)))
+        print(f"Spectrometer: {ccs.idn}, {ccs.wavelengths[0]:.0f}-{ccs.wavelengths[-1]:.0f} nm")
+        spec_dir = a.file.parent / f"spectra_{spec.name}_{a.temp:g}C"
+        spec_dir.mkdir(parents=True, exist_ok=True)
     if a.mode != "sim":
-        print(PREFLIGHT + "  [ ] 20-30 dB attenuation in front of the OSA input.\n")
+        print(PREFLIGHT + ("  [ ] Fibre into the CCS SMA input through an attenuator or a loose SMA coupling\n"
+                           "      (it saturates at microwatts: start with the laser at low current).\n"
+                           if a.ccs else "  [ ] 20-30 dB attenuation in front of the OSA input.\n"))
         if not confirm("Ready?", a.yes):
             sys.exit("Stopped before switching on.")
 
@@ -96,7 +117,23 @@ def main():
             else:
                 ramp_to(driver, I, now)
             now = I
-            if a.mode == "sim":
+            note = ""
+            if ccs is not None:
+                import time
+
+                import numpy as np
+
+                from oil852.instruments.ccs import auto_scan, peak_centre
+                if a.mode != "sim":
+                    time.sleep(a.settle_s)
+                y = auto_scan(ccs)
+                lam, fwhm, top = peak_centre(ccs.wavelengths, y)
+                smsr = ""
+                note = f"ccs fwhm {fwhm:.2f} nm, int {ccs.integration_s * 1e3:.3g} ms"
+                np.savetxt(spec_dir / f"{I:g}mA.csv", np.column_stack([ccs.wavelengths, y]), delimiter=",",
+                           header="wavelength_nm,counts_0to1", comments="", fmt="%.4f")
+                print(f"{I:6.1f} mA  {lam:.3f} nm  (FWHM {fwhm:.2f} nm, peak {top:.2f})")
+            elif a.mode == "sim":
                 lam = driver.laser.wavelength_nm(I)
                 smsr = ""
             else:
@@ -106,7 +143,7 @@ def main():
                 lam = float(s)
                 smsr = input("        SMSR in dB (Enter = skip): ").strip()
             w.writerow({"laser": spec.name, "temperature_C": a.temp, "current_mA": I, "wavelength_nm": lam,
-                        "smsr_dB": smsr, "note": ""})
+                        "smsr_dB": smsr, "note": note})
             f.flush()
     except KeyboardInterrupt:
         print("\nStopped by user.")
@@ -114,6 +151,8 @@ def main():
         off = safe_shutdown(driver, now, manual)
         f.close()
         driver.close()
+        if ccs is not None:
+            ccs.close()
     print(f"{'Laser off.' if off else 'CHECK THE DRIVER IS OFF.'} Saved to {a.file}")
     analyse(a.file)
 

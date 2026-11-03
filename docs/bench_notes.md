@@ -3,7 +3,7 @@
 A running record of how the bench is actually wired and set, what has been checked, and what
 went wrong and why. Read this first before helping at the bench. Update it after each session.
 
-*Last updated: 29 Oct 2026*
+*Last updated: 3 Nov 2026*
 
 ## Kit and serial numbers
 
@@ -14,6 +14,7 @@ went wrong and why. Read this first before helping at the bench. Update it after
 | TEC controller | TTC001 **87814309** | 20 kΩ thermistor range |
 | Power meter | PM100D P0022425 with an **S130C** (Si, 400–1100 nm), slider on **500 mW** | Needs NI-VISA installed; then it appears as `USB0::0x1313::0x8078::P0022425::INSTR`. The S154C (InGaAs, 3 mW max) is the spare head: too small for the DBR above ~80 mA |
 | Slave laser | FPL852P | Not used yet: needs a ≥ 1 A driver |
+| Spectrometer | Thorlabs CCS175/M **M00766231** (500–1000 nm, SMA input) | Not an OSA: ~0.6–1 nm resolution. Good for the DBR peak and its tuning (peak fit to a few pm); can't resolve FP modes or SMSR. Needs ThorSpectra (installs TLCCS_64.dll); close it before scripts. Set `[spectrometer] control = "ccs"` |
 
 Serials are in `config/bench.toml`. The "EEPROM serial number mismatch" warning Kinesis shows for the TTC001 is harmless.
 
@@ -112,6 +113,18 @@ The TEC heats and cools (wiring and polarity fine), but the loop is in a limit c
 - **Fix:** with everything unplugged, thermistor pins 3/4 must be open circuit to TEC pins 5/13 at every stage (TTC001 end, chip plug, PCB). Give the thermistor its own two wires all the way back.
 - **First stage 1 results (25 °C, TEC still cycling):** threshold **41.0 mA** (fit) / 42.0 mA (kink), slope **0.126 W/A**, **20.0 mW at 200 mA**, R_s **2.93 Ω**, V_0 1.16 V, peak wall-plug efficiency 5.8 %. Stability 0.16 % rms after the first minute, warm-up drift +0.9 % over the first ~40 s. Results in `results/characterisation/2026-11-03_DBR852PN/`. Repeat once the TEC holds.
 
+- Pin check after the above: 3–5, 3–13, 4–5 and 4–13 all **open (OL)** at every stage. So there is no resistive short between the thermistor and the TEC wiring.
+- Next test: `01_characterisation/tec_wavelength_check.py` uses the laser wavelength (~0.06 nm/°C on the CCS175) as a second thermometer while the TEC cycles, to tell a real temperature swing from a corrupted reading.
+- `check_instruments.py` failed with everything still unplugged from the pin checks (PM100D missing, KLD101 power-supply bit off, TTC001 reading 0): reconnect the cables, the K-Cube power supplies and the meter's USB before scripts.
+
+#### If the reading is pickup
+
+1. **Does it scale with TEC current?** In Kinesis lower the TTC001 current limit from 500 to 200 mA (Current and Startup tabs, Save) and re-run `tec_wavelength_check.py`. Electrical pickup shrinks in proportion (~3.7 → ~1.5 °C); a real thermal swing changes shape instead.
+2. **Separate the wiring.** Thermistor pair (3/4) as its own twisted pair, routed away from the TEC pair (5/13), also twisted. Keep both short.
+3. **PCB.** Look for the thermistor return sharing a trace, via or ground pour with TEC− or TEC+, or running alongside the TEC traces. Cut and rewire if so.
+4. **Ground loop.** With everything unplugged, check the thermistor pins (3/4 on the 15-pin) are open to the laser-driver 9-pin pins 3 and 8 and to the butterfly case/mount.
+- CCS175 spectrometer available. `wavelength_log.py --ccs` reads the peak automatically and saves each spectrum; `check_instruments.py --ccs` takes one test scan. The tuning steps of `run_experiment.py` use it when `[spectrometer] control = "ccs"`.
+
 ## FP slave (FPL852P) before the 1 A driver
 
 Spec: threshold 240–300 mA, 0.51 W/A, 280–320 mW at 900–1000 mA, 14-pin butterfly Type 1 (same pinout as the DBR, so the same cables), 10 kΩ thermistor, monitor PD, PM fibre FC/APC. On the 230 mA KLD101 it stays below threshold: I–V, spontaneous emission and the FP mode comb only (`01_characterisation/fp_subthreshold.py`). Its `max_current_mA` in `config/bench.toml` is 0 (blocked) until Todd sets it to 200 by hand for this.
@@ -120,7 +133,7 @@ Spec: threshold 240–300 mA, 0.51 W/A, 280–320 mW at 900–1000 mA, 14-pin bu
 
 1. **Today:** pull; S130C on the meter (slider 500 mW); `check_instruments.py`; TEC settled at 25 °C; first light `li_sweep.py --temp 25 --stop 80 --zero`.
 2. **Stage 1:** `run_experiment.py --stages characterisation` (L–I–V at 20/25/30 °C, T0, 10 min stability; OSA tuning when booked; skip with `s` otherwise). Results in `results/characterisation/`; commit them.
-3. **OSA session:** wavelength vs current and temperature (tuning map, mode hops, SMSR). Put the measured pm/mA into `[injection] master_tuning_pm_per_mA`.
+3. **Tuning (CCS175 now, OSA later for SMSR/FP modes):** wavelength vs current and temperature (tuning map, mode hops). Put the measured pm/mA into `[injection] master_tuning_pm_per_mA`.
 4. **Passive parts with the master as the source:** insertion loss and split ratios of the 99:1 couplers, circulator loss and isolation, PM fibre connectors. Then `voa_calibration.py`.
 5. **AWG into the scope (50 Ω), no laser:** confirm the double-pulse and protocol patterns with `scope_capture.py`.
 6. **Slave:** needs a ≥ 1 A driver (ask Ross). Characterise the FPL852P, then stage 2 locking maps, stage 3 gain switching, stage 4 QKD.

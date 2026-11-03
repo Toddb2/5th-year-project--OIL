@@ -359,9 +359,16 @@ def _characterisation(c: Campaign) -> list[Step]:
     if s.get("tuning", True):
         tune_file = lambda c: c.data / "tuning" / f"tuning_{laser}.csv"  # noqa: E731
 
+        def use_ccs(c):
+            return c.sim or c.bench_cfg.get("spectrometer", {}).get("control", "manual") == "ccs"
+
         def tuning_prep(c):
-            c.prompt("Move the master fibre to the OSA (20-30 dB attenuation in front of it). "
-                     "You will type the peak wavelength (and SMSR) at each current.")
+            if use_ccs(c):
+                c.prompt("Move the master fibre to the CCS spectrometer SMA input through an attenuator. "
+                         "Close ThorSpectra. Peaks are read automatically.")
+            else:
+                c.prompt("Move the master fibre to the OSA (20-30 dB attenuation in front of it). "
+                         "You will type the peak wavelength (and SMSR) at each current.")
             return {}
         out.append(Step("c.tuning.prep", "characterisation", "Connect the master to the OSA", tuning_prep, needs_bench=True))
 
@@ -372,7 +379,7 @@ def _characterisation(c: Campaign) -> list[Step]:
                 f.parent.mkdir(parents=True, exist_ok=True)
                 c.script("01_characterisation/wavelength_log.py", "--laser", laser, "--temp", _fmt(T),
                          "--currents", s.get("tuning_currents", "60:200:10"), "--file", f,
-                         "--mode", c.mode_for("wavelength_log"), "--yes")
+                         "--mode", c.mode_for("wavelength_log"), "--yes", *(["--ccs"] if use_ccs(c) else []))
                 res = json.loads(f.with_name(f.stem + "_results.json").read_text())
                 per_I = {float(k): v for k, v in res.get("per_current", {}).items()}
                 if per_I:

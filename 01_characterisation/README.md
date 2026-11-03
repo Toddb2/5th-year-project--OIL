@@ -10,7 +10,8 @@ Measure each laser on its own before any locking: power, voltage and monitor-pho
 | `li_sweep.py` | L–I–V sweep with fits for threshold, slope efficiency and series resistance | `python 01_characterisation/li_sweep.py --temp 25 --stop 200 --zero` |
 | `compare_temperatures.py` | Threshold vs temperature and T0 from several sweeps | `python 01_characterisation/compare_temperatures.py data/<date>/DBR852PN_LIV_*` |
 | `power_stability.py` | Power over time at a fixed current | `python 01_characterisation/power_stability.py --temp 25 --current 150 --minutes 20` |
-| `wavelength_log.py` | Wavelength vs current/temperature from the OSA or wavemeter; tuning coefficients and mode hops | `python 01_characterisation/wavelength_log.py --temp 25 --currents 60:200:10 --file data/tuning_DBR852PN.csv` |
+| `tec_wavelength_check.py` | TEC swing real or only in the reading? Logs thermistor, TEC current and CCS peak wavelength together | `python 01_characterisation/tec_wavelength_check.py --current 150 --temp 25` |
+| `wavelength_log.py` | Wavelength vs current/temperature from the OSA or wavemeter (typed), or the CCS175 spectrometer (`--ccs`, automatic); tuning coefficients and mode hops | `python 01_characterisation/wavelength_log.py --temp 25 --currents 60:200:10 --file data/tuning_DBR852PN.csv --ccs` |
 | `analyse_li.py` | Re-analyse saved or hand-typed L–I data | `python 01_characterisation/analyse_li.py data/<date>/DBR852PN_LIV_25C_*` |
 
 Modes on every measuring script: `auto` (default), `manual-driver`, `manual`, `sim`.
