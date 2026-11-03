@@ -1,0 +1,9 @@
+17:54:51 Campaign 2026-10-29_175451_oil852: mode auto, TEC auto, stages characterisation
+17:54:53 
+=== [c.check] Check the instruments answer (laser off) ===
+17:54:53   $ python 01_characterisation/check_instruments.py --meter --driver --tec
+17:55:03 
+=== [c.prep] Connect the master to the power meter ===
+17:55:11 
+=== [c.liv.20C] L-I-V sweep at 20 C ===
+17:55:15   TEC -> 20 C (= 12.54 kOhm on the TTC001 display)

@@ -1,0 +1,13 @@
+18:04:58 Campaign 2026-10-29_180458_oil852: mode auto, TEC auto, stages characterisation
+18:05:07 
+=== [c.check] Check the instruments answer (laser off) ===
+18:05:07   $ python 01_characterisation/check_instruments.py --meter --driver --tec
+18:05:16 
+=== [c.prep] Connect the master to the power meter ===
+18:05:19 
+=== [c.liv.20C] L-I-V sweep at 20 C ===
+18:05:21   TEC -> 20 C (= 12.54 kOhm on the TTC001 display)
+18:12:44 
+Stopped. Progress saved. Carry on with:
+  python run_experiment.py --resume "C:\Users\toddb\OneDrive\Desktop\5th-year-project--OIL\data\campaigns\2026-10-29_180458_oil852"
+18:12:44 Partial report: C:\Users\toddb\OneDrive\Desktop\5th-year-project--OIL\data\campaigns\2026-10-29_180458_oil852\report.html

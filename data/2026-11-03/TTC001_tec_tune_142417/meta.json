@@ -1,0 +1,97 @@
+{
+  "created": "2026-11-03T14:37:19",
+  "host": "DESKTOP-AVHLSI0",
+  "code_version": "646a27d",
+  "kind": "tec_tune",
+  "start_gains": [
+    5.0,
+    1.0,
+    60.0
+  ],
+  "results": [
+    {
+      "P": 5.0,
+      "I": 1.0,
+      "D": 60.0,
+      "label": "P5 I1 D60",
+      "target_C": 26.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.714448604390327,
+      "offset_C": 1.313607956415771,
+      "rms_tec_mA": 453.77261192510656,
+      "settled": false
+    },
+    {
+      "P": 8,
+      "I": 2,
+      "D": 30,
+      "label": "P8 I2 D30",
+      "target_C": 25.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.727148537859705,
+      "offset_C": 0.30720564447623694,
+      "rms_tec_mA": 453.4800620387479,
+      "settled": false
+    },
+    {
+      "P": 5,
+      "I": 1,
+      "D": 20,
+      "label": "P5 I1 D20",
+      "target_C": 26.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.93927754749933,
+      "offset_C": 1.2511966456549495,
+      "rms_tec_mA": 454.064973324303,
+      "settled": false
+    },
+    {
+      "P": 3,
+      "I": 1,
+      "D": 10,
+      "label": "P3 I1 D10",
+      "target_C": 25.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.6503910037898777,
+      "offset_C": 0.2281490337515957,
+      "rms_tec_mA": 453.77261192510656,
+      "settled": false
+    },
+    {
+      "P": 2,
+      "I": 1,
+      "D": 5,
+      "label": "P2 I1 D5",
+      "target_C": 26.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.858522760279982,
+      "offset_C": 1.205511736745088,
+      "rms_tec_mA": 453.9888030924698,
+      "settled": false
+    },
+    {
+      "P": 1,
+      "I": 0.5,
+      "D": 0,
+      "label": "P1 I0.5 D0",
+      "target_C": 25.0,
+      "settle_s": null,
+      "swing_last_min_C": 3.7687817642913046,
+      "offset_C": 0.13979479736717385,
+      "rms_tec_mA": 453.7345038676252,
+      "settled": false
+    }
+  ],
+  "best": {
+    "P": 3,
+    "I": 1,
+    "D": 10,
+    "label": "P3 I1 D10",
+    "target_C": 25.0,
+    "settle_s": null,
+    "swing_last_min_C": 3.6503910037898777,
+    "offset_C": 0.2281490337515957,
+    "rms_tec_mA": 453.77261192510656,
+    "settled": false
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "stop_reason": "completed",
+  "threshold_fit_mA": 50.014204576413675,
+  "threshold_d2_mA": 49.40199999999997,
+  "slope_W_per_A": 0.09013584281460695,
+  "fit_r2": 0.9999904318041978,
+  "fit_range_mA": [
+    58.068,
+    200.104
+  ],
+  "max_power_mW": 13.57185665738848,
+  "current_at_max_mA": 200.104,
+  "series_resistance_ohm": 4.336751440317013,
+  "turn_on_voltage_V": 1.6904855992524286,
+  "max_wallplug_eff_pct": 2.6555413162206847,
+  "pd_responsivity_mA_per_mW": 0.010007649049744424
+}

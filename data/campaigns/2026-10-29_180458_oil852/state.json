@@ -1,0 +1,20 @@
+{
+  "done": {
+    "c.check": {
+      "status": "ok",
+      "title": "Check the instruments answer (laser off)",
+      "stage": "characterisation",
+      "finished": "2026-10-29T18:05:16",
+      "seconds": 9.7
+    },
+    "c.prep": {
+      "status": "ok",
+      "title": "Connect the master to the power meter",
+      "stage": "characterisation",
+      "finished": "2026-10-29T18:05:19",
+      "seconds": 2.1
+    }
+  },
+  "values": {},
+  "mode": "auto"
+}

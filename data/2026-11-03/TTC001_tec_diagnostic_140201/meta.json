@@ -1,0 +1,71 @@
+{
+  "created": "2026-11-03T14:11:32",
+  "host": "DESKTOP-AVHLSI0",
+  "code_version": "408216f",
+  "kind": "tec_diagnostic",
+  "ended": "completed",
+  "setpoints_C": {
+    "A": null,
+    "B": 24.283942426120063,
+    "C": 22.910187965276066,
+    "D": 25.0
+  },
+  "phase_seconds": {
+    "A": 60,
+    "B": 120,
+    "C": 150,
+    "D": 240
+  },
+  "stats": {
+    "A": {
+      "seconds": 59.1,
+      "T_start": 21.284,
+      "T_end": 21.284,
+      "dT": 0.0,
+      "rate_C_per_min": -1.212742322067052e-14,
+      "I_mean_mA": 0.0,
+      "I_peak_mA": 0.0,
+      "tail_p2p_C": 0.0,
+      "period_s": null
+    },
+    "B": {
+      "seconds": 119.1,
+      "T_start": 21.284,
+      "T_end": 23.444,
+      "dT": 2.16,
+      "rate_C_per_min": 0.896749949712071,
+      "I_mean_mA": -0.3333333333333333,
+      "I_peak_mA": 490.0,
+      "tail_p2p_C": 1.8659999999999997,
+      "period_s": 2.003448275862069
+    },
+    "C": {
+      "seconds": 149.2,
+      "T_start": 24.91,
+      "T_end": 22.531,
+      "dT": -2.3790000000000013,
+      "rate_C_per_min": 0.03868973623638654,
+      "I_mean_mA": -6.933333333333334,
+      "I_peak_mA": 490.0,
+      "tail_p2p_C": 3.8320000000000007,
+      "period_s": 2.0885714285714276
+    },
+    "D": {
+      "seconds": 239.30000000000007,
+      "T_start": 25.898,
+      "T_end": 25.158,
+      "dT": -0.7399999999999984,
+      "rate_C_per_min": 0.05472543876830655,
+      "I_mean_mA": -4.875,
+      "I_peak_mA": 490.0,
+      "tail_p2p_C": 3.812000000000001,
+      "period_s": 2.003389830508475
+    }
+  },
+  "verdicts": {
+    "A": "ambient drift -0.00 C/min with the TEC off",
+    "B": "HEATING WORKS: temperature rose with positive current",
+    "C": "COOLING WORKS: temperature fell with negative current",
+    "D": "OSCILLATING: 3.81 C peak-to-peak, period ~2 s. Lower the proportional and integral gains (and heatsink the laser)."
+  }
+}

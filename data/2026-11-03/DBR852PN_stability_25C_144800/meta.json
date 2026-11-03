@@ -1,0 +1,14 @@
+{
+  "created": "2026-11-03T14:48:00",
+  "host": "DESKTOP-AVHLSI0",
+  "code_version": "646a27d",
+  "laser": "DBR852PN",
+  "kind": "stability",
+  "tec_setpoint_C": 25.0,
+  "current_mA": 150.0,
+  "minutes": 5.0,
+  "interval_s": 0.25,
+  "meter": "Thorlabs,PM100D,P0022425,2.6.0",
+  "sensor": "S130C,190912302,12-SEP-2019,1,3,33",
+  "attenuation_dB": 0.0
+}
