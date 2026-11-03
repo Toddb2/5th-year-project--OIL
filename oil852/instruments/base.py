@@ -38,7 +38,8 @@ class DriverStatus:
         if self.open_circuit:
             w.append("open-circuit bit set: check the laser cable and mount wiring")
         if not self.psu_ok:
-            w.append("power-supply bit not OK")
+            w.append("power-supply bit (0x1000) not set. This KLD101 never sets it, including during the working "
+                     "sweeps, so ignore it if the K-Cube's own LED shows power")
         if self.current_limit_reached:
             w.append("current-limit bit already set")
         return w

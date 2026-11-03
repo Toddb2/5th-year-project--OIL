@@ -127,8 +127,6 @@ def main():
         raise
     st = driver.status()
     problems = st.blocking_problems(cfg["driver"]["polarity"])
-    if not sim and not st.psu_ok:
-        problems.append("KLD101 power-supply bit is off: is its 15 V supply plugged in?")
     if problems:
         driver.close(), tec.close(), ccs.close()
         sys.exit("Cannot start: " + "; ".join(problems))
